@@ -13,6 +13,15 @@
 
 namespace qrl {
 
+namespace {
+QString clientLabel(const flex::GuiClient &c)
+{
+    if (c.station.isEmpty() || c.station == c.program)
+        return c.program;
+    return QStringLiteral("%1 – %2").arg(c.program, c.station);
+}
+} // namespace
+
 RadioPanel::RadioPanel(flex::FlexRadio *radio, QWidget *parent)
     : QWidget(parent)
     , m_radio(radio)
@@ -83,7 +92,7 @@ void RadioPanel::updateClients()
     if (m_radio->boundClientId().isEmpty())
         m_clients->addItem(tr("– bitte wählen –"));
     for (const auto &c : clients) {
-        m_clients->addItem(QStringLiteral("%1 – %2").arg(c.program, c.station), c.clientId);
+        m_clients->addItem(clientLabel(c), c.clientId);
         if (c.clientId == m_radio->boundClientId())
             m_clients->setCurrentIndex(m_clients->count() - 1);
     }
@@ -99,7 +108,7 @@ void RadioPanel::updateSlices()
         QString owner = QStringLiteral("0x%1").arg(s.clientHandle, 8, 16, QLatin1Char('0'));
         for (const auto &c : m_radio->guiClients()) {
             if (c.handle == s.clientHandle)
-                owner = QStringLiteral("%1 – %2").arg(c.program, c.station);
+                owner = clientLabel(c);
         }
         const QStringList cells{
             s.letter.isEmpty() ? QString::number(s.index) : s.letter,
