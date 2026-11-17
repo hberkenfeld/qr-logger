@@ -10,6 +10,8 @@ class QPlainTextEdit;
 namespace qrl {
 
 class ContestPanel;
+class BandmapPanel;
+class ClusterClient;
 class CwKeyer;
 class Sidetone;
 class LogDatabase;
@@ -36,6 +38,10 @@ private:
     void exportCabrillo();
     void showScore(const qrl::Score &score);
     void showConnectDialog();
+    void connectCluster();
+    void disconnectCluster();
+    void editClusterSettings();
+    void updateClusterStatus();
     void appendLog(const QString &message);
     void updateActions();
 
@@ -47,6 +53,9 @@ private:
     Sidetone *m_sidetone;
     ContestPanel *m_panel;
     QLabel *m_score;
+    BandmapPanel *m_bandmap;
+    ClusterClient *m_cluster;
+    ClusterClient *m_skimmer;
     QAction *m_connectAction = nullptr;
     QAction *m_disconnectAction = nullptr;
 };

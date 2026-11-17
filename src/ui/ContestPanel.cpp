@@ -367,6 +367,13 @@ bool ContestPanel::handleKey(QLineEdit *field, int key, Qt::KeyboardModifiers mo
     case Qt::Key_Space:
         focusField(field == m_call ? m_exch : m_call);
         return true;
+    case Qt::Key_Up:
+    case Qt::Key_Down:
+        if (ctrl) {
+            Q_EMIT nextSpotRequested(key == Qt::Key_Up);
+            return true;
+        }
+        return false;
     case Qt::Key_PageUp:
         m_keyer->changeSpeed(+2);
         return true;
@@ -578,6 +585,20 @@ void ContestPanel::deleteSelectedQso()
     m_model->select();
     Q_EMIT statusMessage(tr("QSO mit %1 gelöscht").arg(call));
     focusField(m_call);
+}
+
+void ContestPanel::takeSpot(const QString &call)
+{
+    m_cqPending = false;
+    if (m_run) {
+        m_run = false;
+        updateModeLabel();
+    }
+    m_call->setText(call.toUpper());
+    m_exch->clear();
+    m_rst->setText(QStringLiteral("599"));
+    focusField(m_call);
+    updateInfo();
 }
 
 void ContestPanel::toggleRun()

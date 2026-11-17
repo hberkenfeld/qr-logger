@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "app/MainWindow.h"
 
+#include "app/ClusterSettingsDialog.h"
 #include "app/ConnectDialog.h"
 #include "app/ContestSetupDialog.h"
 #include "app/MessagesDialog.h"
@@ -9,6 +10,9 @@
 #include "log/Cabrillo.h"
 #include "log/LogDatabase.h"
 #include "tx/CwKeyer.h"
+#include "contest/Bands.h"
+#include "net/ClusterClient.h"
+#include "ui/BandmapPanel.h"
 #include "ui/ContestPanel.h"
 #include "radio/flex/FlexDiscovery.h"
 #include "radio/flex/FlexRadio.h"
@@ -23,6 +27,7 @@
 #include <QLabel>
 #include <QMessageBox>
 #include <QStandardPaths>
+#include <QTimer>
 #include <QMenuBar>
 #include <QPlainTextEdit>
 #include <QSettings>
@@ -40,6 +45,9 @@ MainWindow::MainWindow(QWidget *parent)
     , m_sidetone(new Sidetone(this))
     , m_panel(new ContestPanel(m_logDb, m_radio, m_keyer, this))
     , m_score(new QLabel(this))
+    , m_bandmap(nullptr)
+    , m_cluster(new ClusterClient(QStringLiteral("Cluster"), this))
+    , m_skimmer(new ClusterClient(QStringLiteral("Skimmer"), this))
 {
     setWindowTitle(QStringLiteral("QR-Logger %1").arg(QApplication::applicationVersion()));
     resize(1280, 800);
@@ -63,6 +71,32 @@ MainWindow::MainWindow(QWidget *parent)
     radioDock->setWidget(new RadioPanel(m_radio, radioDock));
     addDockWidget(Qt::RightDockWidgetArea, radioDock);
 
+    // Bandmap
+    m_bandmap = new BandmapPanel(
+        [this](const QString &call, const QString &band) {
+            const Contest *contest = m_panel->contest();
+            Qso candidate;
+            candidate.call = call;
+            candidate.band = band;
+            candidate.time = QDateTime::currentDateTimeUtc();
+            if (contest && !contest->dupeReason(candidate, m_panel->qsos()).isEmpty())
+                return BandmapPanel::Status::Dupe;
+            for (const Qso &q : m_panel->qsos()) {
+                if (q.call == call)
+                    return BandmapPanel::Status::NewBand;
+            }
+            return BandmapPanel::Status::New;
+        },
+        [this] {
+            const auto slice = m_radio->txSlice();
+            return slice ? slice->frequencyMHz * 1000.0 : 0.0;
+        },
+        this);
+    auto *bandmapDock = new QDockWidget(tr("Spots"), this);
+    bandmapDock->setObjectName(QStringLiteral("bandmapDock"));
+    bandmapDock->setWidget(m_bandmap);
+    addDockWidget(Qt::LeftDockWidgetArea, bandmapDock);
+
     // Event log
     m_log->setReadOnly(true);
     m_log->setMaximumBlockCount(2000);
@@ -84,6 +118,11 @@ MainWindow::MainWindow(QWidget *parent)
     auto *radioMenu = menuBar()->addMenu(tr("&Radio"));
     m_connectAction = radioMenu->addAction(tr("&Verbinden …"), this, &MainWindow::showConnectDialog);
     m_disconnectAction = radioMenu->addAction(tr("&Trennen"), m_radio, &flex::FlexRadio::disconnectFromRadio);
+    auto *clusterMenu = menuBar()->addMenu(tr("&Cluster"));
+    clusterMenu->addAction(tr("&Verbinden"), this, &MainWindow::connectCluster);
+    clusterMenu->addAction(tr("&Trennen"), this, &MainWindow::disconnectCluster);
+    clusterMenu->addAction(tr("&Einstellungen …"), this, &MainWindow::editClusterSettings);
+
     auto *settingsMenu = menuBar()->addMenu(tr("&Einstellungen"));
     settingsMenu->addAction(tr("CW-&Nachrichten …"), this, &MainWindow::editMessages);
     settingsMenu->addSeparator();
@@ -119,6 +158,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(interlockLog, &QAction::toggled, m_radio, &flex::FlexRadio::setLogInterlock);
     auto *viewMenu = menuBar()->addMenu(tr("&Ansicht"));
     viewMenu->addAction(scoreDock->toggleViewAction());
+    viewMenu->addAction(bandmapDock->toggleViewAction());
     viewMenu->addAction(radioDock->toggleViewAction());
     viewMenu->addAction(logDock->toggleViewAction());
 
@@ -170,6 +210,34 @@ MainWindow::MainWindow(QWidget *parent)
             appendLog(tr("Hinweis: Break-In (QSK/Semi) ist am Radio aus – CWX tastet dann evtl. nicht."));
         }
     });
+
+    // Cluster / skimmer
+    for (ClusterClient *client : {m_cluster, m_skimmer}) {
+        connect(client, &ClusterClient::spotReceived, m_bandmap, &BandmapPanel::addSpot);
+        connect(client, &ClusterClient::stateChanged, this, &MainWindow::updateClusterStatus);
+        connect(client, &ClusterClient::errorOccurred, this, [this, client](const QString &m) {
+            appendLog(tr("%1: %2").arg(client->name(), m));
+        });
+    }
+    connect(m_cluster, &ClusterClient::lineReceived, this, [this](const QString &line) {
+        appendLog(tr("Cluster: %1").arg(line));
+    });
+    connect(m_bandmap, &BandmapPanel::spotSelected, this, [this](const Spot &spot) {
+        const auto slice = m_radio->txSlice();
+        if (!slice) {
+            statusBar()->showMessage(tr("Kein TX-Slice – Spot nicht übernommen"), 5000);
+            return;
+        }
+        m_radio->tuneSlice(slice->index, spot.freqKhz);
+        m_panel->takeSpot(spot.call);
+        statusBar()->showMessage(tr("%1 auf %2 kHz").arg(spot.call).arg(spot.freqKhz, 0, 'f', 1), 5000);
+    });
+    connect(m_panel, &ContestPanel::nextSpotRequested, m_bandmap, &BandmapPanel::tuneNext);
+    connect(m_radio, &flex::FlexRadio::slicesChanged, m_bandmap, &BandmapPanel::refresh);
+    m_bandmap->setLifetimeMinutes(ClusterSettings::load().lifetimeMin);
+    updateClusterStatus();
+    if (QSettings().value(QStringLiteral("cluster/autoConnect"), false).toBool())
+        QTimer::singleShot(0, this, &MainWindow::connectCluster);
 
     const QString lastLog = QSettings().value(QStringLiteral("log/last")).toString();
     if (!lastLog.isEmpty() && QFile::exists(lastLog))
@@ -242,6 +310,7 @@ bool MainWindow::openLogFile(const QString &path)
     }
     QSettings().setValue(QStringLiteral("log/last"), path);
     m_panel->reload();
+    m_bandmap->setModeFilter(m_logDb->station().categoryMode == QLatin1String("MIXED") ? QString() : m_logDb->station().categoryMode);
     setWindowTitle(QStringLiteral("QR-Logger %1 – %2").arg(QApplication::applicationVersion(), QFileInfo(path).fileName()));
     appendLog(tr("Log geöffnet: %1 (%2 QSOs)").arg(path).arg(m_logDb->count()));
     return true;
@@ -303,6 +372,57 @@ void MainWindow::showScore(const Score &s)
                          .arg(m_panel->contest()->name())
                          .arg(s.qsos).arg(s.dupes).arg(s.points).arg(s.multipliers).arg(s.total)
                          .arg(s.details.toHtmlEscaped()));
+}
+
+void MainWindow::connectCluster()
+{
+    const ClusterSettings c = ClusterSettings::load();
+    if (c.callsign.size() < 3) {
+        editClusterSettings();
+        return;
+    }
+    if (c.clusterEnabled && !c.clusterHost.isEmpty())
+        m_cluster->connectTo(c.clusterHost, quint16(c.clusterPort), c.callsign);
+    if (c.skimmerEnabled && !c.skimmerHost.isEmpty())
+        m_skimmer->connectTo(c.skimmerHost, quint16(c.skimmerPort), c.callsign);
+    QSettings().setValue(QStringLiteral("cluster/autoConnect"), true);
+}
+
+void MainWindow::disconnectCluster()
+{
+    m_cluster->disconnectFrom();
+    m_skimmer->disconnectFrom();
+    QSettings().setValue(QStringLiteral("cluster/autoConnect"), false);
+}
+
+void MainWindow::editClusterSettings()
+{
+    ClusterSettingsDialog dialog(ClusterSettings::load(), this);
+    if (dialog.exec() != QDialog::Accepted)
+        return;
+    const ClusterSettings c = dialog.settings();
+    c.save();
+    m_bandmap->setLifetimeMinutes(c.lifetimeMin);
+    if (m_cluster->state() != ClusterClient::State::Disconnected || m_skimmer->state() != ClusterClient::State::Disconnected) {
+        disconnectCluster();
+        connectCluster();
+    }
+}
+
+void MainWindow::updateClusterStatus()
+{
+    auto text = [](const ClusterClient *c) {
+        switch (c->state()) {
+        case ClusterClient::State::Connected:
+            return QStringLiteral("%1: <b style='color:#080'>%2</b>").arg(c->name(), c->endpoint());
+        case ClusterClient::State::Connecting:
+            return QStringLiteral("%1: verbinde %2 …").arg(c->name(), c->endpoint());
+        case ClusterClient::State::Disconnected:
+            break;
+        }
+        return QStringLiteral("%1: –").arg(c->name());
+    };
+    m_bandmap->setConnectionStatus(text(m_cluster) + QStringLiteral(" · ") + text(m_skimmer));
 }
 
 void MainWindow::showConnectDialog()

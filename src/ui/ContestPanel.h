@@ -40,12 +40,18 @@ public:
     bool isRun() const { return m_run; }
     bool esmEnabled() const { return m_esm; }
 
+    const QList<Qso> &qsos() const { return m_qsos; }
+    const StationSettings &station() const { return m_station; }
+    // Takes a call from the bandmap: fills the call field and switches to S&P.
+    void takeSpot(const QString &call);
+
     MessageSet messages(bool run) const;
     void setMessages(bool run, const MessageSet &messages);
 
 Q_SIGNALS:
     void statusMessage(const QString &text);
     void scoreChanged(const qrl::Score &score);
+    void nextSpotRequested(bool up);
 
 protected:
     bool eventFilter(QObject *watched, QEvent *event) override;

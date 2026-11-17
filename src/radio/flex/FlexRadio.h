@@ -52,6 +52,8 @@ public:
     // Binds to the given GUI client. With an empty id the radio binds
     // automatically as soon as exactly one GUI client is present.
     void bindToClient(const QString &clientId);
+    // Tunes a slice ("slice tune <index> <MHz>").
+    void tuneSlice(int index, double khz);
     void setPreferredStation(const QString &station) { m_preferredStation = station; }
 
     State state() const { return m_state; }

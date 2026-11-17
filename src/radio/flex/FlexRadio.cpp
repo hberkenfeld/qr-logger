@@ -58,6 +58,13 @@ void FlexRadio::bindToClient(const QString &clientId)
         sendBind(clientId);
 }
 
+void FlexRadio::tuneSlice(int index, double khz)
+{
+    if (index < 0 || khz <= 0)
+        return;
+    m_connection.sendCommand(QStringLiteral("slice tune %1 %2").arg(index).arg(khz / 1000.0, 0, 'f', 6));
+}
+
 const GuiClient *FlexRadio::boundClient() const
 {
     for (const GuiClient &client : m_guiClients) {

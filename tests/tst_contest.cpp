@@ -3,6 +3,7 @@
 #include "contest/Bands.h"
 #include "contest/TtcContest.h"
 #include "log/Cabrillo.h"
+#include "net/ClusterClient.h"
 #include "log/LogDatabase.h"
 #include "tx/CwKeyer.h"
 #include "tx/Macros.h"
@@ -116,6 +117,28 @@ private Q_SLOTS:
         QCOMPARE(pcm.size(), 2880 * 2);
         const QByteArray paris = Sidetone::render(QStringLiteral("PARIS"), 20, 600, 0.5);
         QCOMPARE(paris.size(), 43 * 2880 * 2);
+    }
+
+    void spotParsing()
+    {
+        auto rbn = parseSpotLine(QStringLiteral("DX de DF1QR-#:    7025.1  SP1ABC       CW    22 dB  28 WPM  CQ      1934Z"));
+        QVERIFY(rbn.has_value());
+        QCOMPARE(rbn->spotter, QStringLiteral("DF1QR-#"));
+        QCOMPARE(rbn->call, QStringLiteral("SP1ABC"));
+        QCOMPARE(rbn->freqKhz, 7025.1);
+        QCOMPARE(rbn->wpm, 28);
+        QCOMPARE(rbn->snr, 22);
+        QCOMPARE(rbn->mode, QStringLiteral("CW"));
+        QVERIFY(rbn->skimmer);
+
+        auto cluster = parseSpotLine(QStringLiteral("DX de W3LPL:     14025.0  JA1ABC       big signal                    1824Z"));
+        QVERIFY(cluster.has_value());
+        QCOMPARE(cluster->call, QStringLiteral("JA1ABC"));
+        QCOMPARE(cluster->spotter, QStringLiteral("W3LPL"));
+        QVERIFY(!cluster->skimmer);
+        QCOMPARE(cluster->wpm, 0);
+
+        QVERIFY(!parseSpotLine(QStringLiteral("Hello DF1QR, this is RBN")).has_value());
     }
 
     void cwProgress()

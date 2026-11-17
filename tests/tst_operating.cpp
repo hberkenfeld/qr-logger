@@ -8,6 +8,12 @@
 #include "tx/CwKeyer.h"
 #include "ui/ContestPanel.h"
 #include "ui/FreeTextDialog.h"
+#include "net/ClusterClient.h"
+#include "ui/BandmapPanel.h"
+
+#include <QSignalSpy>
+#include <QTcpServer>
+#include <QTcpSocket>
 
 #include <QApplication>
 #include <QLineEdit>
@@ -17,6 +23,8 @@
 #include <QtTest>
 
 using namespace qrl;
+
+Q_DECLARE_METATYPE(qrl::Spot)
 
 class TestOperating : public QObject
 {
@@ -134,6 +142,57 @@ private Q_SLOTS:
 
         radio.disconnectFromRadio();
         db.close();
+    }
+
+    void clusterLoginAndSpots()
+    {
+        QTcpServer server;
+        QVERIFY(server.listen(QHostAddress::LocalHost));
+        ClusterClient client(QStringLiteral("Skimmer"));
+        QSignalSpy spots(&client, &ClusterClient::spotReceived);
+        client.connectTo(QStringLiteral("127.0.0.1"), server.serverPort(), QStringLiteral("df1qr"));
+        QTRY_VERIFY_WITH_TIMEOUT(server.hasPendingConnections(), 3000);
+        QTcpSocket *peer = server.nextPendingConnection();
+        peer->write("\xff\xfb\x01Welcome to RBN\r\nPlease enter your call: ");
+        QByteArray login;
+        QTRY_VERIFY_WITH_TIMEOUT((login += peer->readAll(), login.contains("DF1QR\r\n")), 3000);
+        peer->write("DX de DF1QR-#:    7025.1  SP1ABC       CW    22 dB  28 WPM  CQ      1934Z\r\n");
+        QTRY_COMPARE_WITH_TIMEOUT(spots.count(), 1, 3000);
+        const Spot spot = spots.at(0).at(0).value<Spot>();
+        QCOMPARE(spot.call, QStringLiteral("SP1ABC"));
+        QCOMPARE(spot.source, QStringLiteral("Skimmer"));
+        client.disconnectFrom();
+    }
+
+    void bandmapTune()
+    {
+        flex::FlexRadio radio;
+        radio.connectToRadio(QHostAddress::LocalHost, quint16(m_port));
+        QTRY_VERIFY_WITH_TIMEOUT(radio.txSlice().has_value(), 5000);
+
+        BandmapPanel bandmap([](const QString &call, const QString &) {
+                                 return call == QLatin1String("DL1DUP") ? BandmapPanel::Status::Dupe : BandmapPanel::Status::New;
+                             },
+                             [&radio] { return radio.txSlice()->frequencyMHz * 1000.0; });
+        Spot a; a.call = QStringLiteral("SP1ABC"); a.freqKhz = 14030.0; a.time = QDateTime::currentDateTimeUtc();
+        Spot b = a; b.call = QStringLiteral("DL1DUP"); b.freqKhz = 14027.0;
+        Spot c = a; c.call = QStringLiteral("OK1XYZ"); c.freqKhz = 14020.0;
+        Spot d = a; d.call = QStringLiteral("K1AR"); d.freqKhz = 7020.0; // other band
+        for (const Spot &s : {a, b, c, d})
+            bandmap.addSpot(s);
+        bandmap.refresh();
+
+        QSignalSpy selected(&bandmap, &BandmapPanel::spotSelected);
+        bandmap.tuneNext(true);   // current 14025.0 → next unworked above: SP1ABC (DL1DUP is a dupe)
+        QCOMPARE(selected.count(), 1);
+        QCOMPARE(selected.at(0).at(0).value<Spot>().call, QStringLiteral("SP1ABC"));
+        bandmap.tuneNext(false);  // below: OK1XYZ
+        QCOMPARE(selected.at(1).at(0).value<Spot>().call, QStringLiteral("OK1XYZ"));
+
+        QByteArray out;
+        radio.tuneSlice(radio.txSlice()->index, 14030.0);
+        QTRY_VERIFY_WITH_TIMEOUT((out += m_fake.readAll(), out.contains("slice tune 0 14.030000")), 3000);
+        radio.disconnectFromRadio();
     }
 
 private:

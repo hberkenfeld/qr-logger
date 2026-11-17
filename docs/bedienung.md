@@ -12,6 +12,15 @@
 Geloggt wird immer auf der Frequenz des **TX-Slice** des gebundenen GUI-Clients.
 Logs liegen unter `~/.local/share/qr-logger/QR-Logger/logs/*.qrl` (SQLite); das letzte Log wird beim Start wieder geöffnet.
 
+## Cluster / Skimmer
+
+*Cluster → Einstellungen …*: Login-Rufzeichen, DX-Cluster (Host/Port) und Skimmer (Standard: RBN `telnet.reversebeacon.net:7000`), Spot-Lebensdauer. *Cluster → Verbinden* – die Verbindung wird beim nächsten Start automatisch wieder aufgebaut und bei Abbruch alle 15 s neu versucht.
+
+Fenster **Spots** (links): Spots des aktuellen Bands (umschaltbar), sortiert nach Frequenz, je Rufzeichen und Band nur der neueste. Status **NEU** (grün, fett) / **neu Band** / **Dupe** (grau, durchgestrichen) nach den Regeln des Contests; „nur ungearbeitete“ blendet Dupes aus. Der Spot auf der aktuellen TX-Frequenz ist gelb markiert. Spots mit anderer Betriebsart als der Contest (laut Spot-Kommentar) werden ausgeblendet.
+
+- Doppelklick oder Enter auf einen Spot: TX-Slice auf die Frequenz, Rufzeichen ins Call-Feld, Umschalten auf S&P.
+- **Ctrl-↑ / Ctrl-↓** in der Eingabezeile: nächster ungearbeiteter Spot oberhalb / unterhalb.
+
 ## Tasten
 
 | Taste | Funktion |
@@ -33,6 +42,7 @@ Logs liegen unter `~/.local/share/qr-logger/QR-Logger/logs/*.qrl` (SQLite); das 
 | Ctrl-M | ESM ein/aus |
 | Ctrl-Tab | Run / S&P |
 | Ctrl-R | CQ-Wiederholung ein/aus |
+| Ctrl-↑ / Ctrl-↓ | nächster ungearbeiteter Spot oberhalb / unterhalb |
 | Entf oder Rechtsklick → „QSO löschen“ (in der Logtabelle) | QSO löschen; Doppelklick auf eine Zelle = bearbeiten |
 
 ## Variablen in Nachrichten

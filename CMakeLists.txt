@@ -34,6 +34,7 @@ qt_add_library(qrl_core STATIC
     src/log/Cabrillo.cpp                src/log/Cabrillo.h
     src/tx/Macros.cpp                   src/tx/Macros.h
     src/tx/CwKeyer.cpp                  src/tx/CwKeyer.h
+    src/net/ClusterClient.cpp           src/net/ClusterClient.h
 )
 target_include_directories(qrl_core PUBLIC src)
 target_link_libraries(qrl_core PUBLIC Qt6::Core Qt6::Network Qt6::Sql)
@@ -49,6 +50,8 @@ qt_add_executable(qr-logger
     src/ui/ContestPanel.cpp     src/ui/ContestPanel.h
     src/audio/Sidetone.cpp      src/audio/Sidetone.h
     src/ui/FreeTextDialog.cpp   src/ui/FreeTextDialog.h
+    src/ui/BandmapPanel.cpp     src/ui/BandmapPanel.h
+    src/app/ClusterSettingsDialog.cpp src/app/ClusterSettingsDialog.h
 )
 target_link_libraries(qr-logger PRIVATE
     qrl_core
@@ -73,7 +76,8 @@ if(QRL_BUILD_TESTS)
     add_test(NAME tst_contest COMMAND tst_contest)
     qt_add_executable(tst_operating tests/tst_operating.cpp
         src/ui/ContestPanel.cpp src/ui/ContestPanel.h
-        src/ui/FreeTextDialog.cpp src/ui/FreeTextDialog.h)
+        src/ui/FreeTextDialog.cpp src/ui/FreeTextDialog.h
+        src/ui/BandmapPanel.cpp src/ui/BandmapPanel.h)
     target_compile_definitions(tst_operating PRIVATE QRL_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
     target_link_libraries(tst_operating PRIVATE qrl_core Qt6::Widgets Qt6::Test)
     add_test(NAME tst_operating COMMAND tst_operating)
