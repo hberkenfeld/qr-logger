@@ -12,6 +12,7 @@
 
 class QLabel;
 class QLineEdit;
+class QSpinBox;
 class QSqlTableModel;
 class QTableView;
 
@@ -86,6 +87,7 @@ private:
     QLabel *m_infoLabel;
     QLabel *m_modeLabel;
     QLabel *m_txLabel;
+    QSpinBox *m_wpm;
 
     bool m_run = true;
     bool m_esm = true;

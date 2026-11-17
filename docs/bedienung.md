@@ -28,7 +28,7 @@ Logs liegen unter `~/.local/share/qr-logger/QR-Logger/logs/*.qrl` (SQLite); das 
 | Alt-W / F11 | Eingabe löschen |
 | Ctrl-W | aktuelles Feld löschen |
 | PgUp / PgDn, Alt-F10 / Alt-F9 | CW-Tempo ± 2 WpM |
-| Alt-V | CW-Tempo eingeben |
+| Alt-V | Fokus ins Tempo-Feld (rechts neben der Eingabezeile): Zahl tippen oder ↑/↓, Enter übernimmt und springt zurück ins Call-Feld, Esc verwirft |
 | Alt-T oder Alt-K | CW-Freitext: jedes Zeichen wird sofort gesendet, TX erst ab dem ersten Zeichen · Enter schließt (Rest wird gesendet) · Esc schließt und bricht ab · PgUp/PgDn Tempo |
 | Ctrl-M | ESM ein/aus |
 | Ctrl-Tab | Run / S&P |

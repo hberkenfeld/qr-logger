@@ -19,6 +19,7 @@
 #include <QMessageBox>
 #include <QRegularExpressionValidator>
 #include <QSettings>
+#include <QSpinBox>
 #include <QSqlTableModel>
 #include <QTableView>
 #include <QTimer>
@@ -65,6 +66,7 @@ ContestPanel::ContestPanel(LogDatabase *log, flex::FlexRadio *radio, CwKeyer *ke
     , m_infoLabel(new QLabel(this))
     , m_modeLabel(new QLabel(this))
     , m_txLabel(new QLabel(this))
+    , m_wpm(new QSpinBox(this))
 {
     m_call->setValidator(new QRegularExpressionValidator(QRegularExpression(QStringLiteral("[A-Za-z0-9/]{0,16}")), m_call));
     m_rst->setValidator(new QRegularExpressionValidator(QRegularExpression(QStringLiteral("[1-5][1-9][1-9]?")), m_rst));
@@ -97,6 +99,19 @@ ContestPanel::ContestPanel(LogDatabase *log, flex::FlexRadio *radio, CwKeyer *ke
     m_txLabel->setMinimumHeight(m_txLabel->fontMetrics().height() + 8);
     m_txLabel->setStyleSheet(QStringLiteral("QLabel { padding: 2px 6px; border: 1px solid palette(mid); }"));
 
+    m_wpm->setRange(10, 60);
+    m_wpm->setSuffix(tr(" WpM"));
+    m_wpm->setFont(big);
+    m_wpm->setToolTip(tr("CW-Tempo (Alt-V, PgUp/PgDn)"));
+    m_wpm->setValue(m_keyer->speed());
+    m_wpm->setKeyboardTracking(false);
+    m_wpm->installEventFilter(this);
+    connect(m_wpm, &QSpinBox::valueChanged, m_keyer, &CwKeyer::setSpeed);
+    connect(m_keyer, &CwKeyer::speedChanged, m_wpm, [this](int wpm) {
+        const QSignalBlocker block(m_wpm);
+        m_wpm->setValue(wpm);
+    });
+
     auto *entry = new QHBoxLayout;
     entry->addWidget(m_call, 3);
     entry->addWidget(m_rst, 1);
@@ -104,6 +119,7 @@ ContestPanel::ContestPanel(LogDatabase *log, flex::FlexRadio *radio, CwKeyer *ke
     entry->addWidget(m_sentLabel);
     entry->addStretch();
     entry->addWidget(m_modeLabel);
+    entry->addWidget(m_wpm);
 
     auto *layout = new QVBoxLayout(this);
     layout->addWidget(m_view, 1);
@@ -229,6 +245,16 @@ bool ContestPanel::eventFilter(QObject *watched, QEvent *event)
             return true;
         }
         if (ke->key() == Qt::Key_Escape) {
+            focusField(m_call);
+            return true;
+        }
+        return QWidget::eventFilter(watched, event);
+    }
+
+    if (watched == m_wpm) {
+        if (ke->key() == Qt::Key_Return || ke->key() == Qt::Key_Enter || ke->key() == Qt::Key_Escape) {
+            if (ke->key() != Qt::Key_Escape)
+                m_wpm->interpretText();
             focusField(m_call);
             return true;
         }
@@ -368,10 +394,8 @@ bool ContestPanel::handleKey(QLineEdit *field, int key, Qt::KeyboardModifiers mo
         return false;
     case Qt::Key_V:
         if (alt) {
-            bool ok = false;
-            const int wpm = QInputDialog::getInt(this, tr("CW-Tempo"), tr("WpM:"), m_keyer->speed(), 10, 60, 1, &ok);
-            if (ok)
-                m_keyer->setSpeed(wpm);
+            m_wpm->setFocus();
+            m_wpm->selectAll();
             return true;
         }
         return false;
@@ -656,7 +680,6 @@ void ContestPanel::updateModeLabel()
         parts << QStringLiteral("ESM");
     if (m_cqRepeat)
         parts << QStringLiteral("CQ-Rep");
-    parts << QStringLiteral("%1 WpM").arg(m_keyer->speed());
     if (m_keyer->isSending())
         parts << QStringLiteral("<b style='color:#c00'>TX</b>");
     m_modeLabel->setText(parts.join(QStringLiteral(" · ")));
