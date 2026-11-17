@@ -1,0 +1,8 @@
+/build*/
+/out/
+CMakeLists.txt.user*
+compile_commands.json
+.cache/
+.vscode/
+.idea/
+*.swp
