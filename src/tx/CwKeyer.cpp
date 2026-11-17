@@ -39,9 +39,11 @@ QString CwKeyer::encodeText(const QString &text)
     return out;
 }
 
-void CwKeyer::send(const QString &text)
+void CwKeyer::send(const QString &text, bool continuous)
 {
-    const QString clean = text.simplified().toUpper();
+    // Messages are normalised; in continuous (keyboard) mode single characters
+    // including spaces are sent as typed.
+    const QString clean = continuous ? text.toUpper() : text.simplified().toUpper();
     if (clean.isEmpty() || m_radio->state() != flex::FlexRadio::State::Connected)
         return;
 
@@ -65,20 +67,33 @@ void CwKeyer::send(const QString &text)
                 m_endIndex = qMax(m_endIndex, index + chars - 1);
         });
 
-    // Fallback: estimated duration of everything queued, plus margin.
-    const int remaining = m_fallback.isActive() ? m_fallback.remainingTime() : 0;
-    m_fallback.start(remaining + morseDurationMs(clean + QLatin1Char(' '), m_speed) + 300);
-    m_statusSeen = false;
-    if (!m_sending || m_txText.isEmpty()) {
+    // Expected end of everything queued (Morse timing); a separator gap is added
+    // between messages, a character gap between typed characters.
+    const QString separator = continuous ? QString() : QStringLiteral(" ");
+    const bool idle = !m_sending || m_txText.isEmpty() || m_txClock.elapsed() >= m_expectedEndMs;
+    if (idle) {
         m_txText = clean;
         m_txClock.start();
+        m_expectedEndMs = morseDurationMs(clean, m_speed);
     } else {
-        m_txText += QLatin1Char(' ') + clean;
+        m_txText += separator + clean;
+        m_expectedEndMs = morseDurationMs(m_txText, m_speed);
     }
+    m_fallback.start(int(qMax<qint64>(0, m_expectedEndMs - m_txClock.elapsed())) + (continuous ? 600 : 300));
+    m_statusSeen = false;
     m_progressTimer.start();
     Q_EMIT progress(m_txText, 0);
     setSending(true);
-    Q_EMIT sent(clean);
+    Q_EMIT sent(clean, continuous);
+}
+
+void CwKeyer::setManualMode(bool on)
+{
+    m_manual = on;
+    if (!on && !m_sending && m_pttKeyed) {
+        m_radio->connection().sendCommand(QStringLiteral("xmit 0"));
+        m_pttKeyed = false;
+    }
 }
 
 void CwKeyer::stop()
@@ -99,7 +114,7 @@ void CwKeyer::finishMessage()
 {
     m_endIndex = -1;
     m_fallback.stop();
-    if (m_pttKeyed) {
+    if (m_pttKeyed && !m_manual) {
         m_radio->connection().sendCommand(QStringLiteral("xmit 0"));
         m_pttKeyed = false;
     }

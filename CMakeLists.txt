@@ -48,6 +48,7 @@ qt_add_executable(qr-logger
     src/app/MessagesDialog.cpp  src/app/MessagesDialog.h
     src/ui/ContestPanel.cpp     src/ui/ContestPanel.h
     src/audio/Sidetone.cpp      src/audio/Sidetone.h
+    src/ui/FreeTextDialog.cpp   src/ui/FreeTextDialog.h
 )
 target_link_libraries(qr-logger PRIVATE
     qrl_core
@@ -71,7 +72,8 @@ if(QRL_BUILD_TESTS)
     target_link_libraries(tst_contest PRIVATE qrl_core Qt6::Multimedia Qt6::Test)
     add_test(NAME tst_contest COMMAND tst_contest)
     qt_add_executable(tst_operating tests/tst_operating.cpp
-        src/ui/ContestPanel.cpp src/ui/ContestPanel.h)
+        src/ui/ContestPanel.cpp src/ui/ContestPanel.h
+        src/ui/FreeTextDialog.cpp src/ui/FreeTextDialog.h)
     target_compile_definitions(tst_operating PRIVATE QRL_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
     target_link_libraries(tst_operating PRIVATE qrl_core Qt6::Widgets Qt6::Test)
     add_test(NAME tst_operating COMMAND tst_operating)

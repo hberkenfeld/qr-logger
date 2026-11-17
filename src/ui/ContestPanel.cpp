@@ -6,6 +6,7 @@
 #include "radio/flex/FlexRadio.h"
 #include "tx/CwKeyer.h"
 #include "tx/Macros.h"
+#include "ui/FreeTextDialog.h"
 
 #include <QFontDatabase>
 #include <QHBoxLayout>
@@ -358,6 +359,13 @@ bool ContestPanel::handleKey(QLineEdit *field, int key, Qt::KeyboardModifiers mo
             return true;
         }
         return false;
+    case Qt::Key_T:
+    case Qt::Key_K:
+        if (alt) {
+            openFreeText();
+            return true;
+        }
+        return false;
     case Qt::Key_V:
         if (alt) {
             bool ok = false;
@@ -390,22 +398,41 @@ void ContestPanel::sendMessage(const QString &key)
     ctx.cqZone = m_station.cqZone;
     const QString expanded = expandMacro(text, ctx);
 
-    if (m_radio->state() != flex::FlexRadio::State::Connected) {
-        Q_EMIT statusMessage(tr("Kein Radio verbunden – nicht gesendet: %1").arg(expanded));
-        return;
-    }
-    const auto slice = m_radio->txSlice();
-    if (!slice) {
-        Q_EMIT statusMessage(tr("Kein TX-Slice – nicht gesendet"));
-        return;
-    }
-    if (!slice->mode.startsWith(QLatin1String("CW"))) {
-        Q_EMIT statusMessage(tr("TX-Slice %1 steht auf %2, nicht CW – nicht gesendet").arg(slice->letter, slice->mode));
+    if (!checkCwReady()) {
+        Q_EMIT statusMessage(tr("Nicht gesendet: %1").arg(expanded));
         return;
     }
     if (key != QLatin1String("F1"))
         m_cqPending = false;
     m_keyer->send(expanded);
+}
+
+bool ContestPanel::checkCwReady()
+{
+    if (m_radio->state() != flex::FlexRadio::State::Connected) {
+        Q_EMIT statusMessage(tr("Kein Radio verbunden"));
+        return false;
+    }
+    const auto slice = m_radio->txSlice();
+    if (!slice) {
+        Q_EMIT statusMessage(tr("Kein TX-Slice"));
+        return false;
+    }
+    if (!slice->mode.startsWith(QLatin1String("CW"))) {
+        Q_EMIT statusMessage(tr("TX-Slice %1 steht auf %2, nicht CW").arg(slice->letter, slice->mode));
+        return false;
+    }
+    return true;
+}
+
+void ContestPanel::openFreeText()
+{
+    m_cqPending = false;
+    FreeTextDialog dialog(m_keyer, [this] { return checkCwReady(); }, this);
+    dialog.exec();
+    if (!dialog.sentText().isEmpty())
+        Q_EMIT statusMessage(tr("CW-Freitext: %1").arg(dialog.sentText()));
+    focusField(m_call);
 }
 
 void ContestPanel::editMessage(const QString &key)

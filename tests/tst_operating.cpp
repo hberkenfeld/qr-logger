@@ -7,6 +7,7 @@
 #include "radio/flex/FlexRadio.h"
 #include "tx/CwKeyer.h"
 #include "ui/ContestPanel.h"
+#include "ui/FreeTextDialog.h"
 
 #include <QApplication>
 #include <QLineEdit>
@@ -110,6 +111,26 @@ private Q_SLOTS:
         QTRY_VERIFY_WITH_TIMEOUT((drain(), output.contains(QStringLiteral("xmit 0"))), 5000);
         QVERIFY(output.indexOf(QStringLiteral("xmit 1")) < output.indexOf(QStringLiteral("cwx send \"TU\"")));
         QVERIFY(output.indexOf(QStringLiteral("cwx send \"TU\"")) < output.indexOf(QStringLiteral("xmit 0")));
+
+        // Free text: nothing before the first character, then character by character
+        QTRY_VERIFY_WITH_TIMEOUT(!keyer.isSending(), 5000);
+        keyer.setHoldPtt(false);
+        output.clear();
+        {
+            FreeTextDialog dialog(&keyer, [] { return true; });
+            dialog.show();
+            auto *edit = dialog.findChild<QLineEdit *>();
+            QTest::keyClick(edit, Qt::Key_Space); // leading space is ignored
+            QTest::qWait(200);
+            drain();
+            QVERIFY(!output.contains(QStringLiteral("cwx send")));
+            QTest::keyClicks(edit, QStringLiteral("t u"));
+            QCOMPARE(dialog.sentText(), QStringLiteral("T U"));
+            QTRY_VERIFY_WITH_TIMEOUT((drain(), output.contains(QStringLiteral("cwx send \"U\""))), 3000);
+            QVERIFY(output.contains(QStringLiteral("cwx send \"T\"")));
+            QTest::keyClick(edit, Qt::Key_Escape);
+            QTRY_VERIFY_WITH_TIMEOUT((drain(), output.contains(QStringLiteral("cwx clear"))), 3000);
+        }
 
         radio.disconnectFromRadio();
         db.close();

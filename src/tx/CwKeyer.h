@@ -26,7 +26,9 @@ class CwKeyer : public QObject
 public:
     explicit CwKeyer(flex::FlexRadio *radio, QObject *parent = nullptr);
 
-    void send(const QString &text);
+    void send(const QString &text, bool continuous = false);
+    // Keyboard mode: with "hold PTT", PTT stays keyed until manual mode ends.
+    void setManualMode(bool on);
     void stop();
     void setSpeed(int wpm);
     void changeSpeed(int delta) { setSpeed(m_speed + delta); }
@@ -46,7 +48,7 @@ Q_SIGNALS:
     void sendingChanged(bool sending);
     void speedChanged(int wpm);
     void finished();
-    void sent(const QString &text);
+    void sent(const QString &text, bool continuous);
     void diagnostic(const QString &text);
     void stopped();
     // Text in the transmit queue and number of characters already sent.
@@ -61,7 +63,9 @@ private:
     QTimer m_fallback;
     QTimer m_progressTimer;
     QElapsedTimer m_txClock;
-    QString m_txText;      // ends "sending" if no cwx status arrives
+    QString m_txText;
+    qint64 m_expectedEndMs = 0;
+    bool m_manual = false;      // ends "sending" if no cwx status arrives
     int m_speed = 28;
     int m_block = 0;
     int m_endIndex = -1;

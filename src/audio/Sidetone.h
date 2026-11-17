@@ -50,7 +50,7 @@ public:
     void setPitch(int hz) { m_pitch = qBound(200, hz, 1500); }
     void setVolume(double volume); // 0..1
 
-    void play(const QString &text, int wpm);
+    void play(const QString &text, int wpm, bool continuous = false);
     void stop();
 
     // Mono 16-bit PCM at SampleRate (exposed for tests).

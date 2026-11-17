@@ -154,12 +154,15 @@ MainWindow::MainWindow(QWidget *parent)
     });
     connect(m_panel, &ContestPanel::scoreChanged, this, &MainWindow::showScore);
     connect(m_keyer, &CwKeyer::diagnostic, this, &MainWindow::appendLog);
-    connect(m_keyer, &CwKeyer::sent, this, [this](const QString &text) {
+    connect(m_keyer, &CwKeyer::sent, this, [this](const QString &text, bool continuous) {
         m_sidetone->setPitch(m_radio->cwPitch());
-        m_sidetone->play(text, m_keyer->speed());
+        m_sidetone->play(text, m_keyer->speed(), continuous);
     });
     connect(m_keyer, &CwKeyer::stopped, m_sidetone, &Sidetone::stop);
-    connect(m_keyer, &CwKeyer::sent, this, [this](const QString &text) { appendLog(tr("CW: %1").arg(text)); });
+    connect(m_keyer, &CwKeyer::sent, this, [this](const QString &text, bool continuous) {
+        if (!continuous)
+            appendLog(tr("CW: %1").arg(text));
+    });
     connect(m_radio, &flex::FlexRadio::transmitChanged, this, [this] {
         static bool warned = false;
         if (!m_radio->cwBreakIn() && !warned) {

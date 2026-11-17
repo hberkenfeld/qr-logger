@@ -86,12 +86,16 @@ void Sidetone::setVolume(double volume)
     m_volume = qBound(0.0, volume, 1.0);
 }
 
-void Sidetone::play(const QString &text, int wpm)
+void Sidetone::play(const QString &text, int wpm, bool continuous)
 {
-    if (!m_enabled)
+    if (!m_enabled || wpm <= 0)
         return;
     ensureSink();
-    m_source->enqueue(render(text + QLatin1Char(' '), wpm, m_pitch, m_volume));
+    QByteArray pcm = render(text, wpm, m_pitch, m_volume);
+    // Gap after the text: character gap (3 dits) when typing, word gap (7 dits) for messages.
+    const int dit = SampleRate * 1200 / wpm / 1000;
+    pcm.append(QByteArray((continuous || text == QLatin1String(" ") ? 3 : 7) * dit * 2, '\0'));
+    m_source->enqueue(pcm);
 }
 
 void Sidetone::stop()

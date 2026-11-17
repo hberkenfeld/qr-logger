@@ -39,7 +39,7 @@ Quelle: [DXLog – Keyboard and text functions](https://dxlog.net/docs/index.php
 | Ctrl-R | CQ-Wiederholung |
 | Ctrl-Tab | Run/S&P umschalten (Fokus-Kanal) |
 | Shift-Ctrl-Tab | Run/S&P umschalten (anderer Kanal) |
-| Alt-K | Keyboard-Mode (CW/RTTY direkt tippen) |
+| Alt-K / Alt-T | Keyboard-Mode (CW/RTTY direkt tippen); Alt-T zusätzlich in QR-Logger |
 | Alt-V | CW-Tempo eingeben |
 | Alt-F9 / Alt-F10 | CW −/+ 2 WpM (Fokus-Kanal) |
 | Shift-Alt-F9 / F10 | CW −/+ 2 WpM (anderer Kanal) |

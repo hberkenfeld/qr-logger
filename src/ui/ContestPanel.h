@@ -52,6 +52,8 @@ protected:
 private:
     bool handleKey(QLineEdit *field, int key, Qt::KeyboardModifiers mods);
     void sendMessage(const QString &key);
+    bool checkCwReady();
+    void openFreeText();
     void editMessage(const QString &key);
     void onEnter();
     bool logQso();
