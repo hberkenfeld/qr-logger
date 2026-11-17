@@ -38,6 +38,20 @@ private Q_SLOTS:
         QCOMPARE(err.text, QStringLiteral("Unknown command"));
     }
 
+    void infoReply()
+    {
+        Message r = parseLine(QStringLiteral(
+            "R3|0|model=\"FLEX-6700\",chassis_serial=\"0520-0844-6700-4789\",name=\"DF1QR\","
+            "callsign=\"DF1QR\",gps=\"Locked\",num_scu=2,num_slice=8,software_ver=4.2.20.41343,"
+            "options=\"a,b\""));
+        const KeyValues kv = parseCommaKeyValues(r.text);
+        QCOMPARE(kv.value(QStringLiteral("model")), QStringLiteral("FLEX-6700"));
+        QCOMPARE(kv.value(QStringLiteral("name")), QStringLiteral("DF1QR"));
+        QCOMPARE(kv.value(QStringLiteral("num_scu")), QStringLiteral("2"));
+        QCOMPARE(kv.value(QStringLiteral("software_ver")), QStringLiteral("4.2.20.41343"));
+        QCOMPARE(kv.value(QStringLiteral("options")), QStringLiteral("a,b"));
+    }
+
     void statusSlice()
     {
         Message s = parseLine(QStringLiteral("S12345678|slice 0 RF_frequency=14.025000 mode=CW tx=1 index_letter=A"));

@@ -42,8 +42,6 @@ public:
     enum class State { Disconnected, Connecting, Connected };
     Q_ENUM(State)
 
-    static constexpr auto ProgramName = "QR-Logger";
-
     explicit FlexRadio(QObject *parent = nullptr);
 
     void connectToRadio(const QHostAddress &address, quint16 port = 4992);
@@ -60,6 +58,9 @@ public:
     QString model() const { return m_model; }
     QString callsign() const { return m_callsign; }
     QString nickname() const { return m_nickname; }
+    QString softwareVersion() const { return m_softwareVersion; }
+    int numScu() const { return m_numScu; }
+    int numSlices() const { return m_numSlices; }
 
     QList<GuiClient> guiClients() const { return m_guiClients.values(); }
     QString boundClientId() const { return m_boundClientId; }
@@ -93,6 +94,9 @@ private:
     QString m_model;
     QString m_callsign;
     QString m_nickname;
+    QString m_softwareVersion;
+    int m_numScu = 0;
+    int m_numSlices = 0;
     QMap<quint32, GuiClient> m_guiClients;
     QString m_boundClientId;
     QString m_requestedClientId;

@@ -65,7 +65,7 @@ void RadioPanel::updateInfo()
         m_info->setText(tr("verbinde …"));
         break;
     case State::Connected:
-        m_info->setText(QStringLiteral("%1 %2 %3").arg(m_radio->model(), m_radio->nickname(), m_radio->callsign()).simplified());
+        m_info->setText(tr("%1 „%2“ – Firmware %3").arg(m_radio->model(), m_radio->nickname(), m_radio->softwareVersion()));
         break;
     }
 }

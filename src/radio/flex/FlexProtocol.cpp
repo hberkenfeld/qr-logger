@@ -44,6 +44,29 @@ KeyValues parseKeyValues(const QString &text)
     return values;
 }
 
+KeyValues parseCommaKeyValues(const QString &text)
+{
+    KeyValues values;
+    QString token;
+    bool inQuotes = false;
+    auto flush = [&] {
+        const int eq = token.indexOf(QLatin1Char('='));
+        if (eq > 0)
+            values.insert(token.left(eq).trimmed(), unquote(token.mid(eq + 1).trimmed()));
+        token.clear();
+    };
+    for (const QChar ch : text) {
+        if (ch == QLatin1Char('"'))
+            inQuotes = !inQuotes;
+        if (ch == QLatin1Char(',') && !inQuotes)
+            flush();
+        else
+            token.append(ch);
+    }
+    flush();
+    return values;
+}
+
 Message parseLine(const QString &line)
 {
     Message msg;

@@ -56,8 +56,12 @@ class Handler(socketserver.StreamRequestHandler):
             seq = seq.lstrip("D")
             if cmd != "ping":
                 print("<-", cmd, flush=True)
+            if cmd.startswith("client program"):
+                self.send(f"R{seq}|10000002|unknown client program")
+                continue
             if cmd == "info":
-                self.send(f'R{seq}|0|model="FLEX-6700" callsign=DF1QR name=Fake\x7fFlex')
+                self.send(f'R{seq}|0|model="FLEX-6700",chassis_serial="0000-0000-6700-TEST",name="Fake Flex",'
+                          f'callsign="DF1QR",num_scu=2,num_slice=8,num_tx=1,software_ver=4.2.20.41343')
             elif cmd.startswith("client bind"):
                 ok = cmd.endswith("client_id=" + GUI_ID)
                 self.send(f"R{seq}|{'0' if ok else '50000016'}|")

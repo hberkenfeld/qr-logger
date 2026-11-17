@@ -34,6 +34,10 @@ Message parseLine(const QString &line);
 // Surrounding double quotes are removed from values.
 KeyValues parseKeyValues(const QString &text);
 
+// Splits a comma separated list as used in the "info" reply:
+// model="FLEX-6700",name="DF1QR",num_scu=2,... Commas inside quotes are kept.
+KeyValues parseCommaKeyValues(const QString &text);
+
 // Builds "C<seq>|<command>\n".
 QByteArray buildCommand(quint32 sequence, const QString &command);
 

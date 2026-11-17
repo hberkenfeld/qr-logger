@@ -76,20 +76,29 @@ void FlexRadio::setState(State state)
 
 void FlexRadio::onReady()
 {
-    m_connection.sendCommand(QStringLiteral("client program %1").arg(QLatin1String(ProgramName)));
+    // Note: "client program <name>" is rejected for non-GUI clients by firmware 4.2
+    // (0x10000002 "unknown client program"), so it is not sent.
     m_connection.sendCommand(QStringLiteral("info"), [this](const Message &reply) {
         if (reply.code != 0)
             return;
-        m_model = reply.values.value(QStringLiteral("model"), m_model);
-        m_callsign = reply.values.value(QStringLiteral("callsign"), m_callsign);
-        m_nickname = decodeSpaces(reply.values.value(QStringLiteral("name"), m_nickname));
+        const KeyValues info = parseCommaKeyValues(reply.text);
+        m_model = info.value(QStringLiteral("model"), m_model);
+        m_callsign = info.value(QStringLiteral("callsign"), m_callsign);
+        m_nickname = decodeSpaces(info.value(QStringLiteral("name"), m_nickname));
+        m_softwareVersion = info.value(QStringLiteral("software_ver"), m_softwareVersion);
+        m_numScu = info.value(QStringLiteral("num_scu")).toInt();
+        m_numSlices = info.value(QStringLiteral("num_slice")).toInt();
+        Q_EMIT logMessage(tr("%1 %2, Firmware %3, %4 SCU, %5 Slices")
+                              .arg(m_model, m_callsign, m_softwareVersion)
+                              .arg(m_numScu)
+                              .arg(m_numSlices));
         Q_EMIT radioInfoChanged();
     });
     for (const char *topic : {"client", "radio", "slice", "tx"})
         m_connection.sendCommand(QStringLiteral("sub %1 all").arg(QLatin1String(topic)));
 
     setState(State::Connected);
-    Q_EMIT logMessage(tr("Verbunden, Handle 0x%1, Firmware-Protokoll %2")
+    Q_EMIT logMessage(tr("Verbunden, Handle 0x%1, API-Protokoll %2")
                           .arg(m_connection.handle(), 8, 16, QLatin1Char('0'))
                           .arg(m_connection.version()));
 }
