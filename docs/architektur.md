@@ -22,7 +22,7 @@ src/
     flex/     Discovery, TCP-API, Statusmodell, VITA-49-Streams
   tx/         Nachrichten-Engine (Makros/Variablen), CW-, RTTY-, Voice-Sender
   audio/      Voice-Keyer-Rekorder/-Player, Resampling, Pegel
-  dsp/        RTTY-Modulator (AFSK) und -Demodulator, später CW-Decoder
+  dsp/        RTTY-Modulator (AFSK) und -Demodulator, CW-Decoder (ggmorse)
   contest/    Contest-Definitionen, Exchange-Parser, Dupe, Multis, Punkte
   log/        SQLite-Speicher, Cabrillo-/ADIF-Export
   data/       cty.dat, MASTER.SCP, Call-History
@@ -53,7 +53,10 @@ src/
 Vor jedem Senden: TX-Slice des aktiven Kanals setzen (`slice set <n> tx=1`).
 
 ### 3.3 Empfang
-- **RTTY-Dekodierung:** `stream create type=dax_rx dax_channel=<n>` je Kanal → eigener Demodulator (Mark/Space-Filter, ggf. 2 Decoder pro Kanal). AetherSDR hat einen Decoder (`RttyDecoder`, GPL-3) als Referenz.
+- **Audioquelle:** `stream create type=dax_rx dax_channel=<n>` je Kanal (24 kHz) → DSP-Thread.
+- **RTTY-Dekodierung:** eigener Demodulator (Mark/Space-Filter, ggf. 2 Decoder pro Kanal). AetherSDR hat einen Decoder (`RttyDecoder`, GPL-3) als Referenz.
+- **CW-Dekodierung:** Bibliothek [ggmorse](https://github.com/ggerganov/ggmorse) (MIT, als `third_party/` eingebunden – so auch in AetherSDR). Liefert Text **und geschätzte Geschwindigkeit (WpM) und Tonhöhe**. Ein Decoder je Kanal; Pitch-Suchfenster um den CW-Pitch des Slices (±150 Hz).
+- Decodierter Text erscheint im Decoder-Fenster des Kanals; erkannte Rufzeichen lassen sich per Klick/Taste ins Eingabefeld übernehmen.
 - **SSB/CW-Hören:** übernimmt der GUI-Client bzw. Kopfhörer am Radio; QR-Logger steuert nur Panorama/Mute je Slice (`audio_pan`, `audio_mute`).
 
 ## 4. Stationsmodell (SO1R … SO3R/V)
@@ -74,6 +77,19 @@ Vor jedem Senden: TX-Slice des aktiven Kanals setzen (`slice set <n> tx=1`).
 - **ESM** (Enter Sends Message) als Zustandsmaschine pro Kanal.
 - CQ-Wiederholung (Ctrl-R) mit einstellbarer Pause.
 - SSB: Nachricht = WAV-Datei je Taste und Contest-Profil.
+
+### 5.1 CW-Geschwindigkeit (adaptiv)
+
+- **Basis:** CW-Tempo aus der Konfiguration (je Kanal), änderbar mit Alt-V / Alt-F9 / Alt-F10.
+- **CQ und eigenes Call (S&P)** immer im Basistempo.
+- **Antworten an eine Gegenstation** (Exchange, Wiederholungen, TU) im **gemessenen Tempo der Gegenstation**, sobald ihr Ruf decodiert wurde:
+  - Messwert = Geschwindigkeitsschätzung des CW-Decoders über die Dauer des Anrufs (geglättet, Ausreißer verworfen).
+  - Begrenzung auf konfigurierbares Min/Max (Vorschlag: 16–40 WpM) und maximale Abweichung zur Basis.
+  - Gültig nur, wenn der Decoder mit ausreichender Sicherheit eingerastet ist; sonst Basistempo.
+- Nach dem Loggen bzw. Alt-W zurück auf das Basistempo.
+- Gemessenes Tempo wird mit dem QSO gespeichert (Statistik, Call-History).
+- Umsetzung: `cwx wpm <n>` vor dem jeweiligen `cwx send`; Anzeige des aktuell gesendeten Tempos in der Eingabezeile (Basis vs. angepasst).
+- Ein-/ausschaltbar per Taste und Konfiguration.
 
 ## 6. Voice-Keyer-Rekorder
 
@@ -96,7 +112,7 @@ Vor jedem Senden: TX-Slice des aktiven Kanals setzen (`slice set <n> tx=1`).
 | GUI | Widgets, Tastatur, Logansicht |
 | Radio-I/O | TCP-API, Statusparser, Discovery |
 | Stream-I/O | VITA-49 UDP senden/empfangen (DAX TX/RX) |
-| DSP | RTTY-Modulator/-Demodulator, Resampling |
+| DSP | RTTY-Modulator/-Demodulator, CW-Decoder, Resampling |
 | Audio | Rekorder, lokale Vorschau |
 
 Kommunikation ausschließlich über Qt-Signale (queued connections).
@@ -109,6 +125,7 @@ Kommunikation ausschließlich über Qt-Signale (queued connections).
 | M1 | Flex verbinden: Discovery, TCP-API, bind, Slice-/Frequenz-Anzeige | Logger „sieht“ das Radio |
 | M2 | Log-Kern: Eingabezeile, SQLite, Dupe, ein Contest (z. B. CQ WW), Cabrillo | erstes nutzbares Log |
 | M3 | CW über CWX, F-Tasten, ESM | CW-Contest SO1R |
+| M3b | CW-Decoder (DAX RX + ggmorse), adaptives CW-Tempo | Tempo passt sich dem Anrufer an |
 | M4 | Voice-Keyer + Rekorder (DAX TX) | SSB-Contest SO1R |
 | M5 | RTTY: AFSK-Sender, Decoder | RTTY-Contest SO1R |
 | M6 | SO2V, dann SO2R (OTRSP), dann SO3R/V | Mehrkanalbetrieb |
