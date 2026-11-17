@@ -56,6 +56,7 @@ private:
     void onEnter();
     bool logQso();
     void wipe();
+    void deleteSelectedQso();
     void toggleRun();
     void toggleEsm();
     void toggleCqRepeat();

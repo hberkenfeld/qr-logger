@@ -14,6 +14,7 @@
 #include <QKeyEvent>
 #include <QLabel>
 #include <QLineEdit>
+#include <QMenu>
 #include <QMessageBox>
 #include <QRegularExpressionValidator>
 #include <QSettings>
@@ -72,6 +73,14 @@ ContestPanel::ContestPanel(LogDatabase *log, flex::FlexRadio *radio, CwKeyer *ke
     m_view->verticalHeader()->setDefaultSectionSize(m_view->fontMetrics().height() + 6);
     m_view->horizontalHeader()->setStretchLastSection(true);
     m_view->installEventFilter(this);
+    m_view->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(m_view, &QWidget::customContextMenuRequested, this, [this](const QPoint &pos) {
+        if (!m_view->indexAt(pos).isValid())
+            return;
+        QMenu menu(this);
+        menu.addAction(tr("QSO löschen …"), this, &ContestPanel::deleteSelectedQso);
+        menu.exec(m_view->viewport()->mapToGlobal(pos));
+    });
 
     QFont big = m_sentLabel->font();
     big.setPointSizeF(big.pointSizeF() * 1.3);
@@ -214,16 +223,8 @@ bool ContestPanel::eventFilter(QObject *watched, QEvent *event)
     auto *ke = static_cast<QKeyEvent *>(event);
 
     if (watched == m_view) {
-        if (ke->key() == Qt::Key_Delete && m_model) {
-            const QModelIndex idx = m_view->currentIndex();
-            if (!idx.isValid())
-                return true;
-            const qint64 id = m_model->data(m_model->index(idx.row(), 0)).toLongLong();
-            const QString call = m_model->data(m_model->index(idx.row(), 5)).toString();
-            if (QMessageBox::question(this, tr("QSO löschen"), tr("QSO mit %1 löschen?").arg(call)) == QMessageBox::Yes) {
-                m_log->deleteQso(id);
-                m_model->select();
-            }
+        if (ke->key() == Qt::Key_Delete) {
+            deleteSelectedQso();
             return true;
         }
         if (ke->key() == Qt::Key_Escape) {
@@ -508,6 +509,24 @@ void ContestPanel::wipe()
     m_rst->setText(QStringLiteral("599"));
     focusField(m_call);
     updateInfo();
+}
+
+void ContestPanel::deleteSelectedQso()
+{
+    if (!m_model)
+        return;
+    const QModelIndex idx = m_view->currentIndex();
+    if (!idx.isValid())
+        return;
+    const qint64 id = m_model->data(m_model->index(idx.row(), 0)).toLongLong();
+    const QString call = m_model->data(m_model->index(idx.row(), 5)).toString();
+    const QString time = m_model->data(m_model->index(idx.row(), 1)).toString();
+    if (QMessageBox::question(this, tr("QSO löschen"), tr("QSO mit %1 (%2) löschen?").arg(call, time)) != QMessageBox::Yes)
+        return;
+    m_log->deleteQso(id);
+    m_model->select();
+    Q_EMIT statusMessage(tr("QSO mit %1 gelöscht").arg(call));
+    focusField(m_call);
 }
 
 void ContestPanel::toggleRun()

@@ -32,7 +32,7 @@ Logs liegen unter `~/.local/share/qr-logger/QR-Logger/logs/*.qrl` (SQLite); das 
 | Ctrl-M | ESM ein/aus |
 | Ctrl-Tab | Run / S&P |
 | Ctrl-R | CQ-Wiederholung ein/aus |
-| Entf (in der Logtabelle) | QSO löschen; Doppelklick auf eine Zelle = bearbeiten |
+| Entf oder Rechtsklick → „QSO löschen“ (in der Logtabelle) | QSO löschen; Doppelklick auf eine Zelle = bearbeiten |
 
 ## Variablen in Nachrichten
 
