@@ -32,6 +32,10 @@ public:
     int speed() const { return m_speed; }
     bool isSending() const { return m_sending; }
 
+    // Hold PTT ("xmit 1" … "xmit 0") for the whole message instead of relying on break-in.
+    void setHoldPtt(bool hold) { m_holdPtt = hold; }
+    bool holdPtt() const { return m_holdPtt; }
+
     static QString encodeText(const QString &text);
 
 Q_SIGNALS:
@@ -39,10 +43,12 @@ Q_SIGNALS:
     void speedChanged(int wpm);
     void finished();
     void sent(const QString &text);
+    void diagnostic(const QString &text);
 
 private:
     void onStatus(const flex::Message &status);
     void setSending(bool sending);
+    void finishMessage();
 
     flex::FlexRadio *m_radio;
     QTimer m_fallback;      // ends "sending" if no cwx status arrives
@@ -50,6 +56,9 @@ private:
     int m_block = 0;
     int m_endIndex = -1;
     bool m_sending = false;
+    bool m_holdPtt = false;
+    bool m_pttKeyed = false;
+    bool m_statusSeen = false;
 };
 
 } // namespace qrl

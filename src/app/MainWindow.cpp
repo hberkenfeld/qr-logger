@@ -83,6 +83,19 @@ MainWindow::MainWindow(QWidget *parent)
     m_disconnectAction = radioMenu->addAction(tr("&Trennen"), m_radio, &flex::FlexRadio::disconnectFromRadio);
     auto *settingsMenu = menuBar()->addMenu(tr("&Einstellungen"));
     settingsMenu->addAction(tr("CW-&Nachrichten …"), this, &MainWindow::editMessages);
+    settingsMenu->addSeparator();
+    auto *holdPtt = settingsMenu->addAction(tr("CW: &PTT während Nachricht halten (xmit 1/0)"));
+    holdPtt->setCheckable(true);
+    holdPtt->setChecked(QSettings().value(QStringLiteral("cw/holdPtt"), false).toBool());
+    m_keyer->setHoldPtt(holdPtt->isChecked());
+    connect(holdPtt, &QAction::toggled, this, [this](bool on) {
+        m_keyer->setHoldPtt(on);
+        QSettings().setValue(QStringLiteral("cw/holdPtt"), on);
+        appendLog(on ? tr("CW: PTT wird während der Nachricht gehalten") : tr("CW: Tastung über Break-In"));
+    });
+    auto *interlockLog = settingsMenu->addAction(tr("&Diagnose: TX-Interlock protokollieren"));
+    interlockLog->setCheckable(true);
+    connect(interlockLog, &QAction::toggled, m_radio, &flex::FlexRadio::setLogInterlock);
     auto *viewMenu = menuBar()->addMenu(tr("&Ansicht"));
     viewMenu->addAction(scoreDock->toggleViewAction());
     viewMenu->addAction(radioDock->toggleViewAction());
@@ -119,6 +132,7 @@ MainWindow::MainWindow(QWidget *parent)
         appendLog(m);
     });
     connect(m_panel, &ContestPanel::scoreChanged, this, &MainWindow::showScore);
+    connect(m_keyer, &CwKeyer::diagnostic, this, &MainWindow::appendLog);
     connect(m_keyer, &CwKeyer::sent, this, [this](const QString &text) { appendLog(tr("CW: %1").arg(text)); });
     connect(m_radio, &flex::FlexRadio::transmitChanged, this, [this] {
         static bool warned = false;

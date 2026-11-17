@@ -121,7 +121,7 @@ void FlexRadio::onStatus(const Message &status)
     } else if (object == QLatin1String("interlock")) {
         // Diagnostics: show why the radio does (not) transmit.
         const KeyValues &v = status.values;
-        if (v.contains(QStringLiteral("state"))) {
+        if (v.contains(QStringLiteral("state")) && m_logInterlock) {
             Q_EMIT logMessage(tr("TX-Interlock: %1%2%3")
                                   .arg(v.value(QStringLiteral("state")),
                                        v.value(QStringLiteral("source")).isEmpty() ? QString() : tr(", Quelle %1").arg(v.value(QStringLiteral("source"))),
@@ -149,8 +149,11 @@ void FlexRadio::handleTransmitStatus(const KeyValues &v)
         if (v.contains(k))
             diag << QStringLiteral("%1=%2").arg(k, v.value(k));
     }
-    if (!diag.isEmpty())
-        Q_EMIT logMessage(tr("Transmit: %1").arg(diag.join(QLatin1Char(' '))));
+    const QString diagText = diag.join(QLatin1Char(' '));
+    if (!diag.isEmpty() && diagText != m_lastTransmitDiag) {
+        m_lastTransmitDiag = diagText;
+        Q_EMIT logMessage(tr("Transmit: %1").arg(diagText));
+    }
     if (changed)
         Q_EMIT transmitChanged();
 }

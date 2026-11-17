@@ -72,6 +72,7 @@ public:
     // TX slice of the bound GUI client (falls back to any TX slice).
     std::optional<Slice> txSlice() const;
 
+    void setLogInterlock(bool on) { m_logInterlock = on; }
     int cwSpeed() const { return m_cwSpeed; }
     bool cwBreakIn() const { return m_cwBreakIn; }
 
@@ -113,6 +114,8 @@ private:
     QString m_requestedClientId;
     QString m_preferredStation;
     QMap<int, Slice> m_slices;
+    QString m_lastTransmitDiag;
+    bool m_logInterlock = false;
     int m_cwSpeed = 0;
     bool m_cwBreakIn = false;
 };

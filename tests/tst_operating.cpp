@@ -102,6 +102,15 @@ private Q_SLOTS:
         QTest::keyClick(call, Qt::Key_Escape);
         QTRY_VERIFY_WITH_TIMEOUT((drain(), output.contains(QStringLiteral("cwx clear"))), 3000);
 
+        // PTT hold mode: xmit 1 before, xmit 0 after the message
+        QTRY_VERIFY_WITH_TIMEOUT(!keyer.isSending(), 5000);
+        keyer.setHoldPtt(true);
+        output.clear();
+        QTest::keyClick(call, Qt::Key_F3);
+        QTRY_VERIFY_WITH_TIMEOUT((drain(), output.contains(QStringLiteral("xmit 0"))), 5000);
+        QVERIFY(output.indexOf(QStringLiteral("xmit 1")) < output.indexOf(QStringLiteral("cwx send \"TU\"")));
+        QVERIFY(output.indexOf(QStringLiteral("cwx send \"TU\"")) < output.indexOf(QStringLiteral("xmit 0")));
+
         radio.disconnectFromRadio();
         db.close();
     }

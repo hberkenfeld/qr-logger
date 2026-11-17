@@ -12,9 +12,9 @@ CwKeyer::CwKeyer(flex::FlexRadio *radio, QObject *parent)
 {
     m_fallback.setSingleShot(true);
     connect(&m_fallback, &QTimer::timeout, this, [this] {
-        m_endIndex = -1;
-        setSending(false);
-        Q_EMIT finished();
+        if (!m_statusSeen)
+            Q_EMIT diagnostic(tr("CWX: keine 'cwx sent'-Statusmeldung empfangen – Ende per Zeitschätzung"));
+        finishMessage();
     });
     connect(m_radio, &flex::FlexRadio::statusReceived, this, &CwKeyer::onStatus);
     connect(m_radio, &flex::FlexRadio::transmitChanged, this, [this] {
@@ -40,13 +40,19 @@ void CwKeyer::send(const QString &text)
     if (clean.isEmpty() || m_radio->state() != flex::FlexRadio::State::Connected)
         return;
 
+    if (m_holdPtt && !m_pttKeyed) {
+        m_radio->connection().sendCommand(QStringLiteral("xmit 1"));
+        m_pttKeyed = true;
+    }
     const int block = ++m_block;
     const int chars = int(clean.size());
     m_radio->connection().sendCommand(
         QStringLiteral("cwx send \"%1\" %2").arg(encodeText(clean)).arg(block),
         [this, block, chars](const flex::Message &reply) {
-            if (reply.code != 0)
+            if (reply.code != 0) {
+                Q_EMIT diagnostic(tr("cwx send abgelehnt: 0x%1 %2").arg(reply.code, 8, 16, QLatin1Char('0')).arg(reply.text));
                 return;
+            }
             const QStringList parts = reply.text.split(QLatin1Char(','));
             bool ok = false;
             const int index = parts.value(0).trimmed().toInt(&ok);
@@ -57,6 +63,7 @@ void CwKeyer::send(const QString &text)
     // Fallback: estimated duration of everything queued, plus margin.
     const int remaining = m_fallback.isActive() ? m_fallback.remainingTime() : 0;
     m_fallback.start(remaining + morseDurationMs(clean + QLatin1Char(' '), m_speed) + 300);
+    m_statusSeen = false;
     setSending(true);
     Q_EMIT sent(clean);
 }
@@ -67,7 +74,23 @@ void CwKeyer::stop()
         m_radio->connection().sendCommand(QStringLiteral("cwx clear"));
     m_fallback.stop();
     m_endIndex = -1;
+    if (m_pttKeyed) {
+        m_radio->connection().sendCommand(QStringLiteral("xmit 0"));
+        m_pttKeyed = false;
+    }
     setSending(false);
+}
+
+void CwKeyer::finishMessage()
+{
+    m_endIndex = -1;
+    m_fallback.stop();
+    if (m_pttKeyed) {
+        m_radio->connection().sendCommand(QStringLiteral("xmit 0"));
+        m_pttKeyed = false;
+    }
+    setSending(false);
+    Q_EMIT finished();
 }
 
 void CwKeyer::setSpeed(int wpm)
@@ -92,14 +115,16 @@ void CwKeyer::onStatus(const flex::Message &status)
             Q_EMIT speedChanged(m_speed);
         }
     }
-    if (status.values.contains(QStringLiteral("sent")) && m_endIndex >= 0) {
-        const int sentIndex = status.values.value(QStringLiteral("sent")).toInt();
-        if (sentIndex >= m_endIndex) {
-            m_endIndex = -1;
-            m_fallback.stop();
-            setSending(false);
-            Q_EMIT finished();
+    if (status.values.contains(QStringLiteral("sent"))) {
+        if (!m_statusSeen && m_sending) {
+            m_statusSeen = true;
+            Q_EMIT diagnostic(tr("CWX-Status empfangen (sent=%1, Ende bei %2)")
+                                  .arg(status.values.value(QStringLiteral("sent")))
+                                  .arg(m_endIndex));
         }
+        const int sentIndex = status.values.value(QStringLiteral("sent")).toInt();
+        if (m_endIndex >= 0 && sentIndex >= m_endIndex)
+            finishMessage();
     }
 }
 
