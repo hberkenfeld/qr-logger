@@ -7,6 +7,7 @@
 #include "tx/CwKeyer.h"
 #include "tx/Macros.h"
 
+#include <QFontDatabase>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QInputDialog>
@@ -61,6 +62,7 @@ ContestPanel::ContestPanel(LogDatabase *log, flex::FlexRadio *radio, CwKeyer *ke
     , m_sentLabel(new QLabel(this))
     , m_infoLabel(new QLabel(this))
     , m_modeLabel(new QLabel(this))
+    , m_txLabel(new QLabel(this))
 {
     m_call->setValidator(new QRegularExpressionValidator(QRegularExpression(QStringLiteral("[A-Za-z0-9/]{0,16}")), m_call));
     m_rst->setValidator(new QRegularExpressionValidator(QRegularExpression(QStringLiteral("[1-5][1-9][1-9]?")), m_rst));
@@ -78,6 +80,13 @@ ContestPanel::ContestPanel(LogDatabase *log, flex::FlexRadio *radio, CwKeyer *ke
     m_infoLabel->setFont(big);
     m_infoLabel->setMinimumHeight(m_infoLabel->fontMetrics().height() + 4);
 
+    QFont txFont = QFontDatabase::systemFont(QFontDatabase::FixedFont);
+    txFont.setPointSizeF(big.pointSizeF() * 1.2);
+    m_txLabel->setFont(txFont);
+    m_txLabel->setTextFormat(Qt::RichText);
+    m_txLabel->setMinimumHeight(m_txLabel->fontMetrics().height() + 8);
+    m_txLabel->setStyleSheet(QStringLiteral("QLabel { padding: 2px 6px; border: 1px solid palette(mid); }"));
+
     auto *entry = new QHBoxLayout;
     entry->addWidget(m_call, 3);
     entry->addWidget(m_rst, 1);
@@ -88,6 +97,7 @@ ContestPanel::ContestPanel(LogDatabase *log, flex::FlexRadio *radio, CwKeyer *ke
 
     auto *layout = new QVBoxLayout(this);
     layout->addWidget(m_view, 1);
+    layout->addWidget(m_txLabel);
     layout->addLayout(entry);
     layout->addWidget(m_infoLabel);
 
@@ -114,6 +124,18 @@ ContestPanel::ContestPanel(LogDatabase *log, flex::FlexRadio *radio, CwKeyer *ke
                 sendMessage(QStringLiteral("F1"));
         });
     });
+    connect(m_keyer, &CwKeyer::progress, this, [this](const QString &text, int sentChars) {
+        if (text.isEmpty()) {
+            m_txLabel->setText(QStringLiteral("<span style='color:gray'>TX –</span>"));
+            return;
+        }
+        const QString done = text.left(sentChars).toHtmlEscaped();
+        const QString current = text.mid(sentChars, 1).toHtmlEscaped();
+        const QString rest = text.mid(sentChars + 1).toHtmlEscaped();
+        m_txLabel->setText(QStringLiteral("<b style='color:#c00'>TX</b>&nbsp;&nbsp;<span style='color:gray'>%1</span>"
+                                          "<b style='background:#c00;color:white'>%2</b><b>%3</b>")
+                               .arg(done, current.isEmpty() ? QStringLiteral("&nbsp;") : current, rest));
+    });
     connect(m_keyer, &CwKeyer::speedChanged, this, &ContestPanel::updateModeLabel);
     connect(m_keyer, &CwKeyer::sendingChanged, this, &ContestPanel::updateModeLabel);
     connect(m_log, &LogDatabase::changed, this, &ContestPanel::updateScore);
@@ -123,6 +145,7 @@ ContestPanel::ContestPanel(LogDatabase *log, flex::FlexRadio *radio, CwKeyer *ke
     connect(clock, &QTimer::timeout, this, &ContestPanel::updateInfo);
     clock->start();
 
+    m_txLabel->setText(QStringLiteral("<span style='color:gray'>TX –</span>"));
     reload();
 }
 

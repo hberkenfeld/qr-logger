@@ -8,6 +8,7 @@
 // Encoding as in FlexLib CWX.cs (cross-checked with AetherSDR, GPL-3).
 #pragma once
 
+#include <QElapsedTimer>
 #include <QObject>
 #include <QTimer>
 
@@ -38,6 +39,9 @@ public:
 
     static QString encodeText(const QString &text);
 
+    // Index of the character currently being sent (estimated from timing), -1 if idle.
+    static int charIndexAt(const QString &text, int wpm, qint64 elapsedMs);
+
 Q_SIGNALS:
     void sendingChanged(bool sending);
     void speedChanged(int wpm);
@@ -45,6 +49,8 @@ Q_SIGNALS:
     void sent(const QString &text);
     void diagnostic(const QString &text);
     void stopped();
+    // Text in the transmit queue and number of characters already sent.
+    void progress(const QString &text, int sentChars);
 
 private:
     void onStatus(const flex::Message &status);
@@ -52,7 +58,10 @@ private:
     void finishMessage();
 
     flex::FlexRadio *m_radio;
-    QTimer m_fallback;      // ends "sending" if no cwx status arrives
+    QTimer m_fallback;
+    QTimer m_progressTimer;
+    QElapsedTimer m_txClock;
+    QString m_txText;      // ends "sending" if no cwx status arrives
     int m_speed = 28;
     int m_block = 0;
     int m_endIndex = -1;

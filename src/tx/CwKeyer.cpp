@@ -16,6 +16,11 @@ CwKeyer::CwKeyer(flex::FlexRadio *radio, QObject *parent)
             Q_EMIT diagnostic(tr("CWX: keine 'cwx sent'-Statusmeldung empfangen – Ende per Zeitschätzung"));
         finishMessage();
     });
+    m_progressTimer.setInterval(40);
+    connect(&m_progressTimer, &QTimer::timeout, this, [this] {
+        const int idx = charIndexAt(m_txText, m_speed, m_txClock.elapsed());
+        Q_EMIT progress(m_txText, idx < 0 ? int(m_txText.size()) : idx);
+    });
     connect(m_radio, &flex::FlexRadio::statusReceived, this, &CwKeyer::onStatus);
     connect(m_radio, &flex::FlexRadio::transmitChanged, this, [this] {
         const int radioSpeed = m_radio->cwSpeed();
@@ -64,6 +69,14 @@ void CwKeyer::send(const QString &text)
     const int remaining = m_fallback.isActive() ? m_fallback.remainingTime() : 0;
     m_fallback.start(remaining + morseDurationMs(clean + QLatin1Char(' '), m_speed) + 300);
     m_statusSeen = false;
+    if (!m_sending || m_txText.isEmpty()) {
+        m_txText = clean;
+        m_txClock.start();
+    } else {
+        m_txText += QLatin1Char(' ') + clean;
+    }
+    m_progressTimer.start();
+    Q_EMIT progress(m_txText, 0);
     setSending(true);
     Q_EMIT sent(clean);
 }
@@ -129,11 +142,43 @@ void CwKeyer::onStatus(const flex::Message &status)
     }
 }
 
+int CwKeyer::charIndexAt(const QString &text, int wpm, qint64 elapsedMs)
+{
+    if (wpm <= 0)
+        return -1;
+    const double unitMs = 1200.0 / wpm;
+    const qint64 elapsedUnits = qint64(elapsedMs / unitMs);
+    qint64 units = 0;
+    bool first = true;
+    for (int i = 0; i < text.size(); ++i) {
+        const QChar ch = text.at(i).toUpper();
+        int charUnits = 0;
+        if (ch == QLatin1Char(' ')) {
+            charUnits = 4;
+        } else if (const char *code = morsePattern(ch)) {
+            if (!first)
+                charUnits += 3;
+            first = false;
+            for (int k = 0; code[k]; ++k)
+                charUnits += (k > 0 ? 1 : 0) + (code[k] == '.' ? 1 : 3);
+        }
+        units += charUnits;
+        if (elapsedUnits < units)
+            return i;
+    }
+    return -1;
+}
+
 void CwKeyer::setSending(bool sending)
 {
     if (m_sending == sending)
         return;
     m_sending = sending;
+    if (!sending) {
+        m_progressTimer.stop();
+        m_txText.clear();
+        Q_EMIT progress(QString(), 0);
+    }
     Q_EMIT sendingChanged(sending);
 }
 

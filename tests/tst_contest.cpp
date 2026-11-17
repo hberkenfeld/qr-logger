@@ -118,6 +118,16 @@ private Q_SLOTS:
         QCOMPARE(paris.size(), 43 * 2880 * 2);
     }
 
+    void cwProgress()
+    {
+        // "EE" at 20 WpM: E (0–60 ms), gap (60–240), E (240–300)
+        QCOMPARE(CwKeyer::charIndexAt(QStringLiteral("EE"), 20, 0), 0);
+        QCOMPARE(CwKeyer::charIndexAt(QStringLiteral("EE"), 20, 59), 0);
+        QCOMPARE(CwKeyer::charIndexAt(QStringLiteral("EE"), 20, 61), 1);
+        QCOMPARE(CwKeyer::charIndexAt(QStringLiteral("EE"), 20, 299), 1);
+        QCOMPARE(CwKeyer::charIndexAt(QStringLiteral("EE"), 20, 301), -1);
+    }
+
     void cwxEncoding()
     {
         QCOMPARE(CwKeyer::encodeText(QStringLiteral("tu df1qr")), QStringLiteral("TU\x7f" "DF1QR"));

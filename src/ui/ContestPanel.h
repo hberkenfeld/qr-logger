@@ -82,6 +82,7 @@ private:
     QLabel *m_sentLabel;
     QLabel *m_infoLabel;
     QLabel *m_modeLabel;
+    QLabel *m_txLabel;
 
     bool m_run = true;
     bool m_esm = true;
