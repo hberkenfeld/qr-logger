@@ -137,7 +137,8 @@ Kommunikation ausschließlich über Qt-Signale (queued connections).
 | # | Inhalt | Ergebnis |
 |---|---|---|
 | M0 | Projektgerüst, CI | ✅ |
-| M1 | Flex verbinden: Discovery, TCP-API, bind, Slice-/Frequenz-Anzeige | Logger „sieht“ das Radio |
+| M1 | Flex verbinden: Discovery, TCP-API, bind, Slice-/Frequenz-Anzeige | ✅ (am echten Radio noch zu testen) |
+| M1b | Mitschnitt-Werkzeug DAX RX (WAV) / DAX IQ (roh) für den Decoder-Testkorpus | Testdaten aus Contesten |
 | M2 | Log-Kern: Eingabezeile, SQLite, Dupe, ein Contest (z. B. CQ WW), Cabrillo | erstes nutzbares Log |
 | M3 | CW über CWX, F-Tasten, ESM | CW-Contest SO1R |
 | M3b | CW-Slice-Decoder (Testkorpus, Benchmark, Auswahl), adaptives CW-Tempo | Tempo passt sich dem Anrufer an |
@@ -148,10 +149,15 @@ Kommunikation ausschließlich über Qt-Signale (queued connections).
 | M8 | Passband-Skimmer CW/RTTY (DAX IQ) | Anruferliste im Pileup |
 | M9 | Band-Skimmer CW/RTTY → Bandmap | SDC vollständig ersetzt |
 
-## 10. Offene Fragen
+## 10. Stationsumgebung (Stand 2026-11-17)
 
-1. Welcher GUI-Client läuft parallel (AetherSDR, SmartSDR unter Windows, Maestro)?
-2. Welche Radios konkret (Modell, Anzahl SCUs, Firmware-Version)?
-3. SO2R-Hardware vorhanden (Box/Protokoll), bzw. wie wird heute zwischen Radios umgeschaltet?
-4. Erste Contests, die unterstützt werden sollen?
-5. Voice-Keyer: PC-Audio über DAX TX als Standard, Radio-DVK als Option – einverstanden?
+- **Radios:** ein bzw. zwei FLEX-6700 (je 2 SCUs, 8 Slices).
+- **GUI-Clients:** AetherSDR oder Maestro – QR-Logger bindet sich an einen davon.
+- **SDC** wird nicht mehr eingesetzt; QR-Logger übernimmt Decoder und Skimmer.
+
+## 11. Offene Fragen
+
+1. SO2R-Hardware vorhanden (Box/Protokoll), bzw. wie wird zwischen Radios/Slices umgeschaltet und gehört?
+2. Erste Contests, die unterstützt werden sollen?
+3. Voice-Keyer: PC-Audio über DAX TX als Standard, Radio-DVK als Option – einverstanden?
+4. CW-Tempo-Anpassung nur nach unten oder in beide Richtungen?

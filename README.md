@@ -33,6 +33,18 @@ cmake --build build
 ./build/qr-logger
 ```
 
+## Werkzeuge
+
+**`qrl-flexprobe`** – Verbindungstest ohne GUI: sucht Radios im Netz, verbindet, bindet sich an den GUI-Client (AetherSDR/Maestro) und zeigt GUI-Clients und Slices.
+
+```sh
+./build/qrl-flexprobe                      # erstes gefundenes Radio
+./build/qrl-flexprobe --ip 192.168.1.50    # feste IP
+./build/qrl-flexprobe --discover-only      # nur Radios auflisten
+```
+
+**`tools/fake_flex.py`** – einfacher Radio-Emulator für die Entwicklung ohne Radio (`python3 tools/fake_flex.py`).
+
 ## Technik
 
 C++20, Qt 6 (ab 6.4.2), CMake.
