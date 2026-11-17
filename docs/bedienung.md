@@ -19,7 +19,7 @@ Logs liegen unter `~/.local/share/qr-logger/QR-Logger/logs/*.qrl` (SQLite); das 
 Fenster **Spots** (links): Spots des aktuellen Bands (umschaltbar), sortiert nach Frequenz, je Rufzeichen und Band nur der neueste. Status **NEU** (grün, fett) / **neu Band** / **Dupe** (grau, durchgestrichen) nach den Regeln des Contests; „nur ungearbeitete“ blendet Dupes aus. Der Spot auf der aktuellen TX-Frequenz ist gelb markiert. Spots mit anderer Betriebsart als der Contest (laut Spot-Kommentar) werden ausgeblendet.
 
 - Doppelklick oder Enter auf einen Spot: TX-Slice auf die Frequenz, Rufzeichen ins Call-Feld, Umschalten auf S&P.
-- **Ctrl-↑ / Ctrl-↓** in der Eingabezeile: nächster ungearbeiteter Spot oberhalb / unterhalb.
+- **Shift-↑ / Shift-↓** (oder Ctrl-↑ / Ctrl-↓), überall im Fenster: nächster ungearbeiteter Spot oberhalb / unterhalb.
 
 ## Tasten
 
@@ -42,7 +42,8 @@ Fenster **Spots** (links): Spots des aktuellen Bands (umschaltbar), sortiert nac
 | Ctrl-M | ESM ein/aus |
 | Ctrl-Tab | Run / S&P |
 | Ctrl-R | CQ-Wiederholung ein/aus |
-| Ctrl-↑ / Ctrl-↓ | nächster ungearbeiteter Spot oberhalb / unterhalb |
+| Shift-↑ / Shift-↓ (auch Ctrl-↑ / Ctrl-↓) | nächster ungearbeiteter Spot oberhalb / unterhalb – überall im Fenster |
+| Frequenz im Call-Feld + Enter | QSY des TX-Slice: `7025`, `14025.5` (kHz) oder `7.025` (MHz) |
 | Entf oder Rechtsklick → „QSO löschen“ (in der Logtabelle) | QSO löschen; Doppelklick auf eine Zelle = bearbeiten |
 
 ## Variablen in Nachrichten

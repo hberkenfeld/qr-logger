@@ -58,6 +58,11 @@ private:
     QLabel *m_status;
     QString m_modeFilter = QStringLiteral("CW");
     int m_lifetimeMin = 30;
+    double m_lastJumpKhz = 0.0;
+    double m_radioKhzAtJump = 0.0;
+    QString m_lastJumpKey;
+
+    void select(const Spot &spot);
 };
 
 } // namespace qrl

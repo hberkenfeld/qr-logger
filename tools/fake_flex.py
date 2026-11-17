@@ -65,7 +65,7 @@ class Handler(socketserver.StreamRequestHandler):
                 CWX_INDEX[0] += len(text)
                 self.send(f"R{seq}|0|{first},{block}")
                 last = CWX_INDEX[0] - 1
-                threading.Timer(0.3, lambda: self.send(f"S{handle}|cwx sent={last}")).start()
+                threading.Timer(0.3 + 0.08 * len(text), lambda: self.send(f"S{handle}|cwx sent={last}")).start()
                 continue
             if cmd.startswith("cwx wpm"):
                 self.send(f"R{seq}|0|")
@@ -99,13 +99,21 @@ def main():
     ap.add_argument("--discovery-port", type=int, default=4992)
     ap.add_argument("--discovery-target", default="127.0.0.1")
     ap.add_argument("--no-discovery", action="store_true")
+    ap.add_argument("--exit-on-stdin-eof", action="store_true",
+                    help="terminate when stdin is closed (used by the tests)")
     args = ap.parse_args()
+    if args.exit_on_stdin_eof:
+        import os, sys
+        def watchdog():
+            sys.stdin.read()
+            os._exit(0)
+        threading.Thread(target=watchdog, daemon=True).start()
     if not args.no_discovery:
         threading.Thread(target=discovery_loop,
                          args=(args.discovery_target, args.discovery_port, args.port), daemon=True).start()
     socketserver.ThreadingTCPServer.allow_reuse_address = True
     with socketserver.ThreadingTCPServer(("0.0.0.0", args.port), Handler) as srv:
-        print(f"Fake FLEX-6700 on TCP {args.port}", flush=True)
+        print(f"Fake FLEX-6700 on TCP {srv.server_address[1]}", flush=True)
         srv.serve_forever()
 
 

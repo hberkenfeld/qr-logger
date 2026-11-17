@@ -37,13 +37,15 @@ private Q_SLOTS:
         const QString python = QStandardPaths::findExecutable(QStringLiteral("python3"));
         if (python.isEmpty())
             QSKIP("python3 not available");
-        m_port = 49000 + int(QCoreApplication::applicationPid() % 1000);
         m_fake.setProcessChannelMode(QProcess::MergedChannels);
         m_fake.start(python, {QStringLiteral(QRL_SOURCE_DIR "/tools/fake_flex.py"), QStringLiteral("--port"),
-                              QString::number(m_port), QStringLiteral("--no-discovery")});
+                              QStringLiteral("0"), QStringLiteral("--no-discovery"), QStringLiteral("--exit-on-stdin-eof")});
         QVERIFY(m_fake.waitForStarted());
         QByteArray banner;
-        QTRY_VERIFY_WITH_TIMEOUT((banner += m_fake.readAll(), banner.contains("Fake FLEX-6700")), 5000);
+        QTRY_VERIFY_WITH_TIMEOUT((banner += m_fake.readAll(), banner.contains("Fake FLEX-6700 on TCP ")), 5000);
+        const QByteArray line = banner.mid(banner.indexOf("on TCP ") + 7);
+        m_port = line.left(line.indexOf('\n')).trimmed().toInt();
+        QVERIFY(m_port > 0);
     }
 
     void cleanupTestCase()
@@ -102,6 +104,15 @@ private Q_SLOTS:
         QCOMPARE(qsos.first().exchRcvd, QStringLiteral("12"));
         QCOMPARE(qsos.first().band, QStringLiteral("20M"));
         QVERIFY(call->text().isEmpty());
+
+        // Frequency in the call field: QSY of the TX slice
+        QTest::keyClicks(call, QStringLiteral("7025.5"));
+        QTest::keyClick(call, Qt::Key_Return);
+        QTRY_VERIFY_WITH_TIMEOUT((drain(), output.contains(QStringLiteral("slice tune 0 7.025500"))), 3000);
+        QVERIFY(call->text().isEmpty());
+        QTest::keyClicks(call, QStringLiteral("14.03"));
+        QTest::keyClick(call, Qt::Key_Return);
+        QTRY_VERIFY_WITH_TIMEOUT((drain(), output.contains(QStringLiteral("slice tune 0 14.030000"))), 3000);
 
         // Next serial is 002, speed change via PgUp, Esc stops
         QTest::keyClick(call, Qt::Key_PageUp);
@@ -174,20 +185,27 @@ private Q_SLOTS:
                                  return call == QLatin1String("DL1DUP") ? BandmapPanel::Status::Dupe : BandmapPanel::Status::New;
                              },
                              [&radio] { return radio.txSlice()->frequencyMHz * 1000.0; });
-        Spot a; a.call = QStringLiteral("SP1ABC"); a.freqKhz = 14030.0; a.time = QDateTime::currentDateTimeUtc();
-        Spot b = a; b.call = QStringLiteral("DL1DUP"); b.freqKhz = 14027.0;
-        Spot c = a; c.call = QStringLiteral("OK1XYZ"); c.freqKhz = 14020.0;
+        // radio reports 14025.0 throughout
+        Spot a; a.call = QStringLiteral("SP1ABC"); a.freqKhz = 14025.8; a.time = QDateTime::currentDateTimeUtc();
+        Spot b = a; b.call = QStringLiteral("DL1DUP"); b.freqKhz = 14026.5;
+        Spot c = a; c.call = QStringLiteral("OK1XYZ"); c.freqKhz = 14024.0;
         Spot d = a; d.call = QStringLiteral("K1AR"); d.freqKhz = 7020.0; // other band
-        for (const Spot &s : {a, b, c, d})
+        Spot e = a; e.call = QStringLiteral("G4ABC"); e.freqKhz = 14027.5;
+        for (const Spot &s : {a, b, c, d, e})
             bandmap.addSpot(s);
         bandmap.refresh();
 
         QSignalSpy selected(&bandmap, &BandmapPanel::spotSelected);
-        bandmap.tuneNext(true);   // current 14025.0 → next unworked above: SP1ABC (DL1DUP is a dupe)
-        QCOMPARE(selected.count(), 1);
+        // The radio keeps reporting 14025.0 (lag): repeated jumps must walk on, not bounce.
+        bandmap.tuneNext(true);   // 14025.0 → SP1ABC 14025.8
+        bandmap.tuneNext(true);   // reference SP1ABC → G4ABC 14027.5 (DL1DUP 14026.5 is a dupe)
+        bandmap.tuneNext(false);  // reference G4ABC → SP1ABC
+        bandmap.tuneNext(false);  // → OK1XYZ 14024.0
+        QCOMPARE(selected.count(), 4);
         QCOMPARE(selected.at(0).at(0).value<Spot>().call, QStringLiteral("SP1ABC"));
-        bandmap.tuneNext(false);  // below: OK1XYZ
-        QCOMPARE(selected.at(1).at(0).value<Spot>().call, QStringLiteral("OK1XYZ"));
+        QCOMPARE(selected.at(1).at(0).value<Spot>().call, QStringLiteral("G4ABC"));
+        QCOMPARE(selected.at(2).at(0).value<Spot>().call, QStringLiteral("SP1ABC"));
+        QCOMPARE(selected.at(3).at(0).value<Spot>().call, QStringLiteral("OK1XYZ"));
 
         QByteArray out;
         radio.tuneSlice(radio.txSlice()->index, 14030.0);

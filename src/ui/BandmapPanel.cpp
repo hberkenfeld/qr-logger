@@ -65,7 +65,7 @@ BandmapPanel::BandmapPanel(std::function<Status(const QString &, const QString &
             return;
         const QString key = m_table->item(row, ColCall)->data(Qt::UserRole).toString();
         if (m_spots.contains(key))
-            Q_EMIT spotSelected(m_spots.value(key));
+            select(m_spots.value(key));
     };
     connect(m_table, &QTableWidget::cellDoubleClicked, this, [emitRow](int row, int) { emitRow(row); });
     connect(m_bandFilter, &QComboBox::currentIndexChanged, this, [this] {
@@ -192,22 +192,38 @@ void BandmapPanel::refresh()
     m_table->setUpdatesEnabled(true);
 }
 
+void BandmapPanel::select(const Spot &spot)
+{
+    m_lastJumpKhz = spot.freqKhz;
+    m_radioKhzAtJump = m_currentKhz();
+    m_lastJumpKey = spot.call + QLatin1Char('|') + bandForKhz(spot.freqKhz);
+    Q_EMIT spotSelected(spot);
+}
+
 void BandmapPanel::tuneNext(bool up)
 {
-    const double current = m_currentKhz();
+    // Reference: the spot we jumped to last, as long as the radio is still near it.
+    // The slice frequency reported back may lag or differ slightly (tuning step, CW offset),
+    // which otherwise makes the jump bounce between two neighbouring spots.
+    const double radioKhz = m_currentKhz();
+    const bool onLastSpot = m_lastJumpKhz > 0
+        && (qAbs(radioKhz - m_lastJumpKhz) < 1.5 || qAbs(radioKhz - m_radioKhzAtJump) < 0.001);
+    const double current = onLastSpot ? m_lastJumpKhz : radioKhz;
     const QList<Spot> spots = visibleSpots();
     const Spot *best = nullptr;
     for (const Spot &s : spots) {
         if (m_statusFor(s.call, bandForKhz(s.freqKhz)) == Status::Dupe)
             continue;
+        if (onLastSpot && s.call + QLatin1Char('|') + bandForKhz(s.freqKhz) == m_lastJumpKey)
+            continue;
         const double d = s.freqKhz - current;
-        if (up ? d > 0.1 : d < -0.1) {
+        if (up ? d >= 0.05 : d <= -0.05) {
             if (!best || (up ? s.freqKhz < best->freqKhz : s.freqKhz > best->freqKhz))
                 best = &s;
         }
     }
     if (best)
-        Q_EMIT spotSelected(*best);
+        select(*best);
 }
 
 bool BandmapPanel::eventFilter(QObject *watched, QEvent *event)
@@ -219,7 +235,7 @@ bool BandmapPanel::eventFilter(QObject *watched, QEvent *event)
             if (row >= 0) {
                 const QString key = m_table->item(row, ColCall)->data(Qt::UserRole).toString();
                 if (m_spots.contains(key))
-                    Q_EMIT spotSelected(m_spots.value(key));
+                    select(m_spots.value(key));
             }
             return true;
         }

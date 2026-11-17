@@ -51,6 +51,7 @@ bool LogDatabase::open(const QString &path, QString *error)
 void LogDatabase::close()
 {
     if (m_db.isValid()) {
+        Q_EMIT aboutToClose();
         m_db.close();
         m_db = QSqlDatabase();
         QSqlDatabase::removeDatabase(m_connectionName);

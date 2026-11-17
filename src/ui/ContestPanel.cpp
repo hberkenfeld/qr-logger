@@ -68,7 +68,7 @@ ContestPanel::ContestPanel(LogDatabase *log, flex::FlexRadio *radio, CwKeyer *ke
     , m_txLabel(new QLabel(this))
     , m_wpm(new QSpinBox(this))
 {
-    m_call->setValidator(new QRegularExpressionValidator(QRegularExpression(QStringLiteral("[A-Za-z0-9/]{0,16}")), m_call));
+    m_call->setValidator(new QRegularExpressionValidator(QRegularExpression(QStringLiteral("[A-Za-z0-9/.,]{0,16}")), m_call));
     m_rst->setValidator(new QRegularExpressionValidator(QRegularExpression(QStringLiteral("[1-5][1-9][1-9]?")), m_rst));
     m_rst->setText(QStringLiteral("599"));
 
@@ -165,6 +165,11 @@ ContestPanel::ContestPanel(LogDatabase *log, flex::FlexRadio *radio, CwKeyer *ke
     connect(m_keyer, &CwKeyer::speedChanged, this, &ContestPanel::updateModeLabel);
     connect(m_keyer, &CwKeyer::sendingChanged, this, &ContestPanel::updateModeLabel);
     connect(m_log, &LogDatabase::changed, this, &ContestPanel::updateScore);
+    connect(m_log, &LogDatabase::aboutToClose, this, [this] {
+        m_view->setModel(nullptr);
+        delete m_model;
+        m_model = nullptr;
+    });
 
     auto *clock = new QTimer(this);
     clock->setInterval(1000);
@@ -175,7 +180,11 @@ ContestPanel::ContestPanel(LogDatabase *log, flex::FlexRadio *radio, CwKeyer *ke
     reload();
 }
 
-ContestPanel::~ContestPanel() = default;
+ContestPanel::~ContestPanel()
+{
+    m_view->setModel(nullptr);
+    delete m_model;
+}
 
 void ContestPanel::reload()
 {
@@ -367,13 +376,6 @@ bool ContestPanel::handleKey(QLineEdit *field, int key, Qt::KeyboardModifiers mo
     case Qt::Key_Space:
         focusField(field == m_call ? m_exch : m_call);
         return true;
-    case Qt::Key_Up:
-    case Qt::Key_Down:
-        if (ctrl) {
-            Q_EMIT nextSpotRequested(key == Qt::Key_Up);
-            return true;
-        }
-        return false;
     case Qt::Key_PageUp:
         m_keyer->changeSpeed(+2);
         return true;
@@ -480,8 +482,37 @@ void ContestPanel::editMessage(const QString &key)
     setMessages(m_run, set);
 }
 
+bool ContestPanel::tryQsy()
+{
+    // A number in the call field is a frequency: kHz (7025, 14025.5) or MHz (7.025)
+    static const QRegularExpression freqRe(QStringLiteral("^\\d+(?:[.,]\\d+)?$"));
+    QString text = m_call->text().trimmed();
+    if (!freqRe.match(text).hasMatch())
+        return false;
+    text.replace(QLatin1Char(','), QLatin1Char('.'));
+    double khz = text.toDouble();
+    if (khz < 100)
+        khz *= 1000.0;
+    if (khz < 100 || khz > 54000) {
+        Q_EMIT statusMessage(tr("Ungültige Frequenz: %1").arg(m_call->text()));
+        return true;
+    }
+    const auto slice = m_radio->txSlice();
+    if (!slice) {
+        Q_EMIT statusMessage(tr("Kein TX-Slice – QSY nicht möglich"));
+        return true;
+    }
+    m_radio->tuneSlice(slice->index, khz);
+    Q_EMIT statusMessage(tr("QSY Slice %1 auf %2 kHz").arg(slice->letter).arg(khz, 0, 'f', 2));
+    m_call->clear();
+    updateInfo();
+    return true;
+}
+
 void ContestPanel::onEnter()
 {
+    if (tryQsy())
+        return;
     const bool hasCall = !m_call->text().isEmpty();
     QString error;
     const bool exchOk = m_contest->validateExchange(m_exch->text(), &error);

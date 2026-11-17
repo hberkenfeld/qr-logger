@@ -26,6 +26,7 @@
 #include <QInputDialog>
 #include <QLabel>
 #include <QMessageBox>
+#include <QShortcut>
 #include <QStandardPaths>
 #include <QTimer>
 #include <QMenuBar>
@@ -232,7 +233,15 @@ MainWindow::MainWindow(QWidget *parent)
         m_panel->takeSpot(spot.call);
         statusBar()->showMessage(tr("%1 auf %2 kHz").arg(spot.call).arg(spot.freqKhz, 0, 'f', 1), 5000);
     });
-    connect(m_panel, &ContestPanel::nextSpotRequested, m_bandmap, &BandmapPanel::tuneNext);
+    // Spot jumping from anywhere in the window: Shift-Up/Down (and Ctrl-Up/Down as in DXLog)
+    for (const auto &[seq, up] : {std::pair{QKeySequence(Qt::SHIFT | Qt::Key_Up), true},
+                                  std::pair{QKeySequence(Qt::SHIFT | Qt::Key_Down), false},
+                                  std::pair{QKeySequence(Qt::CTRL | Qt::Key_Up), true},
+                                  std::pair{QKeySequence(Qt::CTRL | Qt::Key_Down), false}}) {
+        auto *shortcut = new QShortcut(seq, this);
+        shortcut->setContext(Qt::ApplicationShortcut);
+        connect(shortcut, &QShortcut::activated, m_bandmap, [this, up = up] { m_bandmap->tuneNext(up); });
+    }
     connect(m_radio, &flex::FlexRadio::slicesChanged, m_bandmap, &BandmapPanel::refresh);
     m_bandmap->setLifetimeMinutes(ClusterSettings::load().lifetimeMin);
     updateClusterStatus();

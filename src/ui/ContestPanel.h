@@ -63,6 +63,7 @@ private:
     void openFreeText();
     void editMessage(const QString &key);
     void onEnter();
+    bool tryQsy();
     bool logQso();
     void wipe();
     void deleteSelectedQso();

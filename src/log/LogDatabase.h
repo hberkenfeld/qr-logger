@@ -36,6 +36,8 @@ public:
 
 Q_SIGNALS:
     void changed();
+    // Emitted before the connection is closed: users of database() must release it.
+    void aboutToClose();
 
 private:
     bool createSchema();
