@@ -35,7 +35,11 @@ cmake --build build
 
 ## Technik
 
-C++20, Qt 6 (ab 6.4.2), CMake. Details in [docs/entscheidungen.md](docs/entscheidungen.md).
+C++20, Qt 6 (ab 6.4.2), CMake.
+
+- [Grundsatzentscheidungen](docs/entscheidungen.md)
+- [Architektur](docs/architektur.md)
+- [Tastenbelegung](docs/tastenbelegung.md)
 
 ## Danksagung
 
