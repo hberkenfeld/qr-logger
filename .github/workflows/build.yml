@@ -22,7 +22,8 @@ jobs:
           apt-get update
           apt-get install -y --no-install-recommends \
             ca-certificates git build-essential cmake ninja-build \
-            qt6-base-dev qt6-multimedia-dev qt6-serialport-dev libqt6sql6-sqlite
+            qt6-base-dev qt6-multimedia-dev qt6-serialport-dev libqt6sql6-sqlite \
+            python3
 
       - uses: actions/checkout@v4
 

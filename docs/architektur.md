@@ -115,6 +115,8 @@ QR-Logger ersetzt SDC für Dekodierung und Skimming (CW **und** RTTY). Drei Eben
 
 ## 7. Contest-Engine und Log
 
+- **Erste Contests:** TTC-SPCWC (wöchentlich, Di), CQ WW DX CW (28.–29.11.2026).
+- **Stand:** Contests sind vorerst C++-Klassen hinter der Schnittstelle `Contest` (`src/contest/`). Später als Datei-Definition:
 - **Contest-Definition** als Datei (Format: JSON, Vorschlag): Bänder, Modes, Exchange-Felder mit Validierung, Dupe-Regel, Multiplikatoren, Punkteformel. Spezialfälle (WAE-QTC u. ä.) als C++-Erweiterung.
 - **Log:** SQLite, eine Datenbank je Contest-Log; WAL-Modus, jeder QSO sofort persistent.
 - **Export:** Cabrillo 3.0, ADIF 3.x.
@@ -137,10 +139,10 @@ Kommunikation ausschließlich über Qt-Signale (queued connections).
 | # | Inhalt | Ergebnis |
 |---|---|---|
 | M0 | Projektgerüst, CI | ✅ |
-| M1 | Flex verbinden: Discovery, TCP-API, bind, Slice-/Frequenz-Anzeige | ✅ (am echten Radio noch zu testen) |
+| M1 | Flex verbinden: Discovery, TCP-API, bind, Slice-/Frequenz-Anzeige | ✅ am FLEX-6700 (FW 4.2.20) bestätigt |
 | M1b | Mitschnitt-Werkzeug DAX RX (WAV) / DAX IQ (roh) für den Decoder-Testkorpus | Testdaten aus Contesten |
-| M2 | Log-Kern: Eingabezeile, SQLite, Dupe, ein Contest (z. B. CQ WW), Cabrillo | erstes nutzbares Log |
-| M3 | CW über CWX, F-Tasten, ESM | CW-Contest SO1R |
+| M2 | Log-Kern: Eingabezeile, SQLite, Dupe, Contests TTC-SPCWC und CQ WW CW, Cabrillo | TTC ✅ (Simulator), CQ WW folgt |
+| M3 | CW über CWX, F-Tasten, ESM | ✅ (Simulator), Test am Radio: TTC 17.11. |
 | M3b | CW-Slice-Decoder (Testkorpus, Benchmark, Auswahl), adaptives CW-Tempo | Tempo passt sich dem Anrufer an |
 | M4 | Voice-Keyer + Rekorder (DAX TX) | SSB-Contest SO1R |
 | M5 | RTTY: AFSK-Sender, Slice-Decoder | RTTY-Contest SO1R |
@@ -158,6 +160,5 @@ Kommunikation ausschließlich über Qt-Signale (queued connections).
 ## 11. Offene Fragen
 
 1. SO2R-Hardware vorhanden (Box/Protokoll), bzw. wie wird zwischen Radios/Slices umgeschaltet und gehört?
-2. Erste Contests, die unterstützt werden sollen?
-3. Voice-Keyer: PC-Audio über DAX TX als Standard, Radio-DVK als Option – einverstanden?
-4. CW-Tempo-Anpassung nur nach unten oder in beide Richtungen?
+2. Voice-Keyer: PC-Audio über DAX TX als Standard, Radio-DVK als Option – einverstanden?
+3. CW-Tempo-Anpassung nur nach unten oder in beide Richtungen?

@@ -52,6 +52,7 @@ C++20, Qt 6 (ab 6.4.2), CMake.
 - [Grundsatzentscheidungen](docs/entscheidungen.md)
 - [Architektur](docs/architektur.md)
 - [Tastenbelegung](docs/tastenbelegung.md)
+- [Bedienung](docs/bedienung.md)
 
 ## Danksagung
 

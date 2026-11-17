@@ -116,7 +116,40 @@ void FlexRadio::onStatus(const Message &status)
             handleSliceStatus(index, status.values);
     } else if (object == QLatin1String("radio")) {
         handleRadioStatus(status.values);
+    } else if (object == QLatin1String("transmit")) {
+        handleTransmitStatus(status.values);
     }
+    Q_EMIT statusReceived(status);
+}
+
+void FlexRadio::handleTransmitStatus(const KeyValues &v)
+{
+    bool changed = false;
+    if (v.contains(QStringLiteral("speed"))) {
+        m_cwSpeed = v.value(QStringLiteral("speed")).toInt();
+        changed = true;
+    }
+    if (v.contains(QStringLiteral("break_in"))) {
+        m_cwBreakIn = v.value(QStringLiteral("break_in")) == QLatin1String("1");
+        changed = true;
+    }
+    if (changed)
+        Q_EMIT transmitChanged();
+}
+
+std::optional<Slice> FlexRadio::txSlice() const
+{
+    const GuiClient *bound = boundClient();
+    std::optional<Slice> fallback;
+    for (const Slice &s : m_slices) {
+        if (!s.tx)
+            continue;
+        if (bound && s.clientHandle == bound->handle)
+            return s;
+        if (!fallback)
+            fallback = s;
+    }
+    return fallback;
 }
 
 void FlexRadio::handleClientStatus(const Message &status)

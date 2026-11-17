@@ -26,9 +26,17 @@ qt_add_library(qrl_core STATIC
     src/radio/flex/FlexDiscovery.cpp    src/radio/flex/FlexDiscovery.h
     src/radio/flex/FlexConnection.cpp   src/radio/flex/FlexConnection.h
     src/radio/flex/FlexRadio.cpp        src/radio/flex/FlexRadio.h
+    src/contest/Qso.h
+    src/contest/Bands.cpp               src/contest/Bands.h
+    src/contest/Contest.h
+    src/contest/TtcContest.cpp          src/contest/TtcContest.h
+    src/log/LogDatabase.cpp             src/log/LogDatabase.h
+    src/log/Cabrillo.cpp                src/log/Cabrillo.h
+    src/tx/Macros.cpp                   src/tx/Macros.h
+    src/tx/CwKeyer.cpp                  src/tx/CwKeyer.h
 )
 target_include_directories(qrl_core PUBLIC src)
-target_link_libraries(qrl_core PUBLIC Qt6::Core Qt6::Network)
+target_link_libraries(qrl_core PUBLIC Qt6::Core Qt6::Network Qt6::Sql)
 
 # --- Application ---------------------------------------------------------------
 qt_add_executable(qr-logger
@@ -36,6 +44,9 @@ qt_add_executable(qr-logger
     src/app/MainWindow.cpp      src/app/MainWindow.h
     src/app/ConnectDialog.cpp   src/app/ConnectDialog.h
     src/app/RadioPanel.cpp      src/app/RadioPanel.h
+    src/app/ContestSetupDialog.cpp src/app/ContestSetupDialog.h
+    src/app/MessagesDialog.cpp  src/app/MessagesDialog.h
+    src/ui/ContestPanel.cpp     src/ui/ContestPanel.h
 )
 target_link_libraries(qr-logger PRIVATE
     qrl_core
@@ -55,4 +66,12 @@ if(QRL_BUILD_TESTS)
     qt_add_executable(tst_flexprotocol tests/tst_flexprotocol.cpp)
     target_link_libraries(tst_flexprotocol PRIVATE qrl_core Qt6::Test)
     add_test(NAME tst_flexprotocol COMMAND tst_flexprotocol)
+    qt_add_executable(tst_contest tests/tst_contest.cpp)
+    target_link_libraries(tst_contest PRIVATE qrl_core Qt6::Test)
+    add_test(NAME tst_contest COMMAND tst_contest)
+    qt_add_executable(tst_operating tests/tst_operating.cpp
+        src/ui/ContestPanel.cpp src/ui/ContestPanel.h)
+    target_compile_definitions(tst_operating PRIVATE QRL_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+    target_link_libraries(tst_operating PRIVATE qrl_core Qt6::Widgets Qt6::Test)
+    add_test(NAME tst_operating COMMAND tst_operating)
 endif()

@@ -14,6 +14,8 @@ import struct
 import threading
 import time
 
+CWX_INDEX = [0]
+
 GUI_HANDLE = "0x1A2B3C4D"
 GUI_ID = "72E8C7F3-5766-4ADF-9286-EBF2F525C770"
 SLICES = [
@@ -56,6 +58,19 @@ class Handler(socketserver.StreamRequestHandler):
             seq = seq.lstrip("D")
             if cmd != "ping":
                 print("<-", cmd, flush=True)
+            if cmd.startswith("cwx send"):
+                # cwx send "<text>" <block>  -> R<seq>|0|<first index>,<block>
+                text, block = cmd[len('cwx send "'):].rsplit('" ', 1)
+                first = CWX_INDEX[0]
+                CWX_INDEX[0] += len(text)
+                self.send(f"R{seq}|0|{first},{block}")
+                last = CWX_INDEX[0] - 1
+                threading.Timer(0.3, lambda: self.send(f"S{handle}|cwx sent={last}")).start()
+                continue
+            if cmd.startswith("cwx wpm"):
+                self.send(f"R{seq}|0|")
+                self.send(f"S{handle}|cwx wpm={cmd.split()[-1]}")
+                continue
             if cmd.startswith("client program"):
                 self.send(f"R{seq}|10000002|unknown client program")
                 continue
@@ -71,6 +86,8 @@ class Handler(socketserver.StreamRequestHandler):
                 self.send(f"S0|client {GUI_HANDLE} connected local_ptt=1 client_id={GUI_ID} "
                           f"program=AetherSDR station=Shack")
                 self.send("S0|client 0x0BADBEEF connected program=SmartSDR-CAT")
+            elif cmd == "sub tx all":
+                self.send(f"S{handle}|transmit freq=14.025000 speed=28 break_in=1 pitch=600")
             elif cmd == "sub slice all":
                 for s in SLICES:
                     self.send(f"S{GUI_HANDLE[2:]}|{s}")
@@ -81,9 +98,11 @@ def main():
     ap.add_argument("--port", type=int, default=4992, help="TCP port")
     ap.add_argument("--discovery-port", type=int, default=4992)
     ap.add_argument("--discovery-target", default="127.0.0.1")
+    ap.add_argument("--no-discovery", action="store_true")
     args = ap.parse_args()
-    threading.Thread(target=discovery_loop,
-                     args=(args.discovery_target, args.discovery_port, args.port), daemon=True).start()
+    if not args.no_discovery:
+        threading.Thread(target=discovery_loop,
+                         args=(args.discovery_target, args.discovery_port, args.port), daemon=True).start()
     socketserver.ThreadingTCPServer.allow_reuse_address = True
     with socketserver.ThreadingTCPServer(("0.0.0.0", args.port), Handler) as srv:
         print(f"Fake FLEX-6700 on TCP {args.port}", flush=True)

@@ -13,6 +13,8 @@
 #include <QMap>
 #include <QObject>
 
+#include <optional>
+
 namespace qrl::flex {
 
 struct Slice
@@ -67,6 +69,11 @@ public:
     const GuiClient *boundClient() const;
 
     QList<Slice> slices() const { return m_slices.values(); }
+    // TX slice of the bound GUI client (falls back to any TX slice).
+    std::optional<Slice> txSlice() const;
+
+    int cwSpeed() const { return m_cwSpeed; }
+    bool cwBreakIn() const { return m_cwBreakIn; }
 
     FlexConnection &connection() { return m_connection; }
 
@@ -76,6 +83,9 @@ Q_SIGNALS:
     void guiClientsChanged();
     void boundClientChanged(const QString &clientId);
     void slicesChanged();
+    void transmitChanged();
+    // Every status message, for consumers such as the CW keyer.
+    void statusReceived(const qrl::flex::Message &status);
     void errorOccurred(const QString &message);
     void logMessage(const QString &message);
 
@@ -86,6 +96,7 @@ private:
     void handleClientStatus(const Message &status);
     void handleSliceStatus(int index, const KeyValues &values);
     void handleRadioStatus(const KeyValues &values);
+    void handleTransmitStatus(const KeyValues &values);
     void tryAutoBind();
     void sendBind(const QString &clientId);
 
@@ -102,6 +113,8 @@ private:
     QString m_requestedClientId;
     QString m_preferredStation;
     QMap<int, Slice> m_slices;
+    int m_cwSpeed = 0;
+    bool m_cwBreakIn = false;
 };
 
 } // namespace qrl::flex
