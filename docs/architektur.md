@@ -22,7 +22,7 @@ src/
     flex/     Discovery, TCP-API, Statusmodell, VITA-49-Streams
   tx/         Nachrichten-Engine (Makros/Variablen), CW-, RTTY-, Voice-Sender
   audio/      Voice-Keyer-Rekorder/-Player, Resampling, Pegel
-  dsp/        RTTY-Modulator (AFSK) und -Demodulator, CW-Decoder (austauschbar)
+  dsp/        RTTY-Modulator (AFSK), CW-/RTTY-Decoder, Skimmer (Kanalisierung, Spots)
   contest/    Contest-Definitionen, Exchange-Parser, Dupe, Multis, Punkte
   log/        SQLite-Speicher, Cabrillo-/ADIF-Export
   data/       cty.dat, MASTER.SCP, Call-History
@@ -52,15 +52,26 @@ src/
 
 Vor jedem Senden: TX-Slice des aktiven Kanals setzen (`slice set <n> tx=1`).
 
-### 3.3 Empfang
-- **Audioquelle:** `stream create type=dax_rx dax_channel=<n>` je Kanal (24 kHz) → DSP-Thread.
-- **RTTY-Dekodierung:** eigener Demodulator (Mark/Space-Filter, ggf. 2 Decoder pro Kanal). AetherSDR hat einen Decoder (`RttyDecoder`, GPL-3) als Referenz.
-- **CW-Dekodierung:** austauschbar hinter einer Schnittstelle `ICwDecoder` (Text + geschätztes WpM + Pitch + Konfidenz). Ein Decoder je Kanal.
-  - **Anforderung:** Genauigkeit mindestens auf Niveau SDC (UT4LW) bei geringer Latenz (< 1 s) – Rückmeldung aus der Praxis: ggmorse (AetherSDR) ist zu ungenau.
-  - **Quelle A – SDC als externer Skimmer:** SDC (UT4LW, Windows/Linux/macOS, Closed Source) setzt selbst auf die SmartSDR-API auf. QR-Logger liest dessen Skimmer-Spots (Telnet, Cluster-Format inkl. WpM) und nutzt sie für Rufzeichen-Vorschläge auf der eigenen Frequenz und das gemessene Tempo des Anrufers. *Schnittstelle noch zu verifizieren.*
-  - **Quelle B – eigener Decoder** für Volltext im Decoder-Fenster. Kandidaten: (1) klassisch nach fldigi-Vorbild (GPL-3, Matched Filter, „Optimal ATC“ nach W7AY, adaptives Timing), (2) Bausteine aus OpenSkimmer (uhsdr_cw/Goertzel, libbmorse/Bayes-Trellis von AG1LE) – Lizenz prüfen, (3) neuronal (DeepFist/DeepCW) nur bei passender Latenz/Lizenz, (4) ggmorse nur als Vergleich.
-  - **Vorgehen:** Testkorpus aus realen DAX-RX-Mitschnitten (WAV) mit SDC-Ausgabe als Referenz; Zeichenfehlerrate, Latenz und WpM-Genauigkeit automatisiert messen, erst dann Entscheidung.
-- Decodierter Text erscheint im Decoder-Fenster des Kanals; erkannte Rufzeichen lassen sich per Klick/Taste ins Eingabefeld übernehmen.
+### 3.3 Empfang, Decoder und Skimmer
+
+QR-Logger ersetzt SDC für Dekodierung und Skimming (CW **und** RTTY). Drei Ebenen, alle mit denselben Decoder-Kernen:
+
+| Ebene | Quelle | Zweck |
+|---|---|---|
+| **Slice-Decoder** | `stream create type=dax_rx dax_channel=<n>` (24 kHz Audio) je Kanal | Volltext des eingestellten Signals im Decoder-Fenster |
+| **Passband-Skimmer** | DAX-IQ um die Kanal-Frequenz (schmal, z. B. ±2 kHz) | alle Anrufer im Pileup gleichzeitig: Rufzeichen + WpM + Ablage → Anruferliste, Tempo-Anpassung |
+| **Band-Skimmer** | `stream create type=dax_iq daxiq_channel=<n>` (bis 192 kHz je Panadapter) | ganzes Bandsegment → Spots in die Bandmap |
+
+**Pipeline (Skimmer):** IQ → FFT-Spektrum → Signaldetektion (Peaks, Rauschboden) → je Signal Mischer + Dezimation → Decoder-Instanz (CW oder RTTY) → Rufzeichen-Extraktion → Spot.
+
+- **Decoder-Kerne** hinter Schnittstellen `ICwDecoder` / `IRttyDecoder` (Text, WpM bzw. Baudrate/Shift, Pitch, Konfidenz).
+  - **Anforderung:** Genauigkeit mindestens auf SDC-Niveau, Latenz < 1 s. ggmorse (AetherSDR) ist laut Praxiserfahrung zu ungenau.
+  - **CW-Kandidaten:** (1) klassisch nach fldigi-Vorbild (GPL-3, Matched Filter, „Optimal ATC“ nach W7AY, adaptives Timing), (2) Bayes-Ansatz (wie CW Skimmer; libbmorse von AG1LE, Lizenz prüfen), (3) neuronal (DeepFist/DeepCW) nur bei passender Latenz/Lizenz, (4) ggmorse als Vergleich.
+  - **RTTY:** Mark/Space-Filterbank mit ATC, automatische Shift-/Polaritätserkennung für den Skimmer. Referenz: `RttyDecoder` (AetherSDR, GPL-3).
+- **Rufzeichen-Extraktion:** Muster + Plausibilität über cty.dat und MASTER.SCP; ein Spot erst nach mehrfacher übereinstimmender Dekodierung (wie bei Skimmern üblich), Konfidenzwert je Spot.
+- **Bewertung:** Testkorpus aus realen Mitschnitten (DAX RX als WAV, DAX IQ als Rohdaten) mit SDC-Ausgabe bzw. Handkopie als Referenz; Zeichenfehlerrate, Rufzeichen-Trefferquote, Latenz und WpM-Genauigkeit automatisiert messen (`tests/decoder-bench`).
+- **Last:** Decoder-Instanzen in einem Thread-Pool; maximale Anzahl gleichzeitiger Decoder konfigurierbar.
+- **Zu klären:** DAX-IQ ist an einen Panadapter gebunden. Als gebundener Nicht-GUI-Client muss QR-Logger ggf. die Panadapter des GUI-Clients nutzen oder eigene anlegen dürfen – Verhalten der Firmware prüfen.
 - **SSB/CW-Hören:** übernimmt der GUI-Client bzw. Kopfhörer am Radio; QR-Logger steuert nur Panorama/Mute je Slice (`audio_pan`, `audio_mute`).
 
 ## 4. Stationsmodell (SO1R … SO3R/V)
@@ -115,8 +126,8 @@ Vor jedem Senden: TX-Slice des aktiven Kanals setzen (`slice set <n> tx=1`).
 |---|---|
 | GUI | Widgets, Tastatur, Logansicht |
 | Radio-I/O | TCP-API, Statusparser, Discovery |
-| Stream-I/O | VITA-49 UDP senden/empfangen (DAX TX/RX) |
-| DSP | RTTY-Modulator/-Demodulator, CW-Decoder, Resampling |
+| Stream-I/O | VITA-49 UDP senden/empfangen (DAX TX/RX/IQ) |
+| DSP (Pool) | RTTY-Modulator, CW-/RTTY-Decoder, Skimmer, Resampling |
 | Audio | Rekorder, lokale Vorschau |
 
 Kommunikation ausschließlich über Qt-Signale (queued connections).
@@ -129,11 +140,13 @@ Kommunikation ausschließlich über Qt-Signale (queued connections).
 | M1 | Flex verbinden: Discovery, TCP-API, bind, Slice-/Frequenz-Anzeige | Logger „sieht“ das Radio |
 | M2 | Log-Kern: Eingabezeile, SQLite, Dupe, ein Contest (z. B. CQ WW), Cabrillo | erstes nutzbares Log |
 | M3 | CW über CWX, F-Tasten, ESM | CW-Contest SO1R |
-| M3b | CW-Decoder (Testkorpus, Benchmark, Auswahl), adaptives CW-Tempo | Tempo passt sich dem Anrufer an |
+| M3b | CW-Slice-Decoder (Testkorpus, Benchmark, Auswahl), adaptives CW-Tempo | Tempo passt sich dem Anrufer an |
 | M4 | Voice-Keyer + Rekorder (DAX TX) | SSB-Contest SO1R |
-| M5 | RTTY: AFSK-Sender, Decoder | RTTY-Contest SO1R |
+| M5 | RTTY: AFSK-Sender, Slice-Decoder | RTTY-Contest SO1R |
 | M6 | SO2V, dann SO2R (OTRSP), dann SO3R/V | Mehrkanalbetrieb |
 | M7 | Bandmap, DX-Cluster, SCP, Call-History, weitere Contests | Komfort |
+| M8 | Passband-Skimmer CW/RTTY (DAX IQ) | Anruferliste im Pileup |
+| M9 | Band-Skimmer CW/RTTY → Bandmap | SDC vollständig ersetzt |
 
 ## 10. Offene Fragen
 
