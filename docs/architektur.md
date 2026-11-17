@@ -22,7 +22,7 @@ src/
     flex/     Discovery, TCP-API, Statusmodell, VITA-49-Streams
   tx/         Nachrichten-Engine (Makros/Variablen), CW-, RTTY-, Voice-Sender
   audio/      Voice-Keyer-Rekorder/-Player, Resampling, Pegel
-  dsp/        RTTY-Modulator (AFSK) und -Demodulator, CW-Decoder (ggmorse)
+  dsp/        RTTY-Modulator (AFSK) und -Demodulator, CW-Decoder (austauschbar)
   contest/    Contest-Definitionen, Exchange-Parser, Dupe, Multis, Punkte
   log/        SQLite-Speicher, Cabrillo-/ADIF-Export
   data/       cty.dat, MASTER.SCP, Call-History
@@ -55,7 +55,11 @@ Vor jedem Senden: TX-Slice des aktiven Kanals setzen (`slice set <n> tx=1`).
 ### 3.3 Empfang
 - **Audioquelle:** `stream create type=dax_rx dax_channel=<n>` je Kanal (24 kHz) → DSP-Thread.
 - **RTTY-Dekodierung:** eigener Demodulator (Mark/Space-Filter, ggf. 2 Decoder pro Kanal). AetherSDR hat einen Decoder (`RttyDecoder`, GPL-3) als Referenz.
-- **CW-Dekodierung:** Bibliothek [ggmorse](https://github.com/ggerganov/ggmorse) (MIT, als `third_party/` eingebunden – so auch in AetherSDR). Liefert Text **und geschätzte Geschwindigkeit (WpM) und Tonhöhe**. Ein Decoder je Kanal; Pitch-Suchfenster um den CW-Pitch des Slices (±150 Hz).
+- **CW-Dekodierung:** austauschbar hinter einer Schnittstelle `ICwDecoder` (Text + geschätztes WpM + Pitch + Konfidenz). Ein Decoder je Kanal.
+  - **Anforderung:** Genauigkeit mindestens auf Niveau SDC (UT4LW) bei geringer Latenz (< 1 s) – Rückmeldung aus der Praxis: ggmorse (AetherSDR) ist zu ungenau.
+  - **Kandidaten:** (1) klassischer Decoder nach fldigi-Vorbild (GPL-3, Matched Filter, adaptive Schwelle „Optimal ATC“ nach W7AY, adaptives Timing), (2) neuronaler Decoder (DeepFist/DeepCW) – nur wenn Latenz und Lizenz passen, (3) ggmorse nur als Vergleich.
+  - **Vorgehen:** Testkorpus aus realen DAX-RX-Mitschnitten (WAV) mit bekanntem Text bzw. SDC-Ausgabe als Referenz; Zeichenfehlerrate und Latenz automatisiert messen, erst dann Entscheidung.
+  - SDC selbst ist Closed Source (Windows) und kann nicht eingebunden werden.
 - Decodierter Text erscheint im Decoder-Fenster des Kanals; erkannte Rufzeichen lassen sich per Klick/Taste ins Eingabefeld übernehmen.
 - **SSB/CW-Hören:** übernimmt der GUI-Client bzw. Kopfhörer am Radio; QR-Logger steuert nur Panorama/Mute je Slice (`audio_pan`, `audio_mute`).
 
@@ -125,7 +129,7 @@ Kommunikation ausschließlich über Qt-Signale (queued connections).
 | M1 | Flex verbinden: Discovery, TCP-API, bind, Slice-/Frequenz-Anzeige | Logger „sieht“ das Radio |
 | M2 | Log-Kern: Eingabezeile, SQLite, Dupe, ein Contest (z. B. CQ WW), Cabrillo | erstes nutzbares Log |
 | M3 | CW über CWX, F-Tasten, ESM | CW-Contest SO1R |
-| M3b | CW-Decoder (DAX RX + ggmorse), adaptives CW-Tempo | Tempo passt sich dem Anrufer an |
+| M3b | CW-Decoder (Testkorpus, Benchmark, Auswahl), adaptives CW-Tempo | Tempo passt sich dem Anrufer an |
 | M4 | Voice-Keyer + Rekorder (DAX TX) | SSB-Contest SO1R |
 | M5 | RTTY: AFSK-Sender, Decoder | RTTY-Contest SO1R |
 | M6 | SO2V, dann SO2R (OTRSP), dann SO3R/V | Mehrkanalbetrieb |
