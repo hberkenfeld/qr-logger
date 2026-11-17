@@ -11,6 +11,7 @@ FlexRadio::FlexRadio(QObject *parent)
     connect(&m_connection, &FlexConnection::ready, this, &FlexRadio::onReady);
     connect(&m_connection, &FlexConnection::statusReceived, this, &FlexRadio::onStatus);
     connect(&m_connection, &FlexConnection::disconnected, this, [this] {
+        m_transmitDiag.clear();
         m_guiClients.clear();
         m_slices.clear();
         m_boundClientId.clear();
@@ -142,18 +143,17 @@ void FlexRadio::handleTransmitStatus(const KeyValues &v)
         m_cwBreakIn = v.value(QStringLiteral("break_in")) == QLatin1String("1");
         changed = true;
     }
-    // Diagnostics for CW keying problems
+    // Diagnostics for CW keying problems: log only values that actually changed
     QStringList diag;
-    for (const char *key : {"rfpower", "tunepower", "mox", "synccwx", "break_in", "max_power_level"}) {
+    for (const char *key : {"rfpower", "tunepower", "mox", "synccwx", "break_in", "break_in_delay", "max_power_level", "inhibit"}) {
         const QString k = QLatin1String(key);
-        if (v.contains(k))
+        if (v.contains(k) && m_transmitDiag.value(k) != v.value(k)) {
+            m_transmitDiag.insert(k, v.value(k));
             diag << QStringLiteral("%1=%2").arg(k, v.value(k));
+        }
     }
-    const QString diagText = diag.join(QLatin1Char(' '));
-    if (!diag.isEmpty() && diagText != m_lastTransmitDiag) {
-        m_lastTransmitDiag = diagText;
-        Q_EMIT logMessage(tr("Transmit: %1").arg(diagText));
-    }
+    if (!diag.isEmpty())
+        Q_EMIT logMessage(tr("Transmit: %1").arg(diag.join(QLatin1Char(' '))));
     if (changed)
         Q_EMIT transmitChanged();
 }

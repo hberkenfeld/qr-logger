@@ -114,7 +114,7 @@ private:
     QString m_requestedClientId;
     QString m_preferredStation;
     QMap<int, Slice> m_slices;
-    QString m_lastTransmitDiag;
+    KeyValues m_transmitDiag;
     bool m_logInterlock = false;
     int m_cwSpeed = 0;
     bool m_cwBreakIn = false;
