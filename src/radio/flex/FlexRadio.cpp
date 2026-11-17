@@ -118,6 +118,15 @@ void FlexRadio::onStatus(const Message &status)
         handleRadioStatus(status.values);
     } else if (object == QLatin1String("transmit")) {
         handleTransmitStatus(status.values);
+    } else if (object == QLatin1String("interlock")) {
+        // Diagnostics: show why the radio does (not) transmit.
+        const KeyValues &v = status.values;
+        if (v.contains(QStringLiteral("state"))) {
+            Q_EMIT logMessage(tr("TX-Interlock: %1%2%3")
+                                  .arg(v.value(QStringLiteral("state")),
+                                       v.value(QStringLiteral("source")).isEmpty() ? QString() : tr(", Quelle %1").arg(v.value(QStringLiteral("source"))),
+                                       v.value(QStringLiteral("reason")).isEmpty() ? QString() : tr(", Grund %1").arg(v.value(QStringLiteral("reason")))));
+        }
     }
     Q_EMIT statusReceived(status);
 }
@@ -133,6 +142,15 @@ void FlexRadio::handleTransmitStatus(const KeyValues &v)
         m_cwBreakIn = v.value(QStringLiteral("break_in")) == QLatin1String("1");
         changed = true;
     }
+    // Diagnostics for CW keying problems
+    QStringList diag;
+    for (const char *key : {"rfpower", "tunepower", "mox", "synccwx", "break_in", "max_power_level"}) {
+        const QString k = QLatin1String(key);
+        if (v.contains(k))
+            diag << QStringLiteral("%1=%2").arg(k, v.value(k));
+    }
+    if (!diag.isEmpty())
+        Q_EMIT logMessage(tr("Transmit: %1").arg(diag.join(QLatin1Char(' '))));
     if (changed)
         Q_EMIT transmitChanged();
 }

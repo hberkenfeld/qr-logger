@@ -370,6 +370,15 @@ void ContestPanel::sendMessage(const QString &key)
         Q_EMIT statusMessage(tr("Kein Radio verbunden – nicht gesendet: %1").arg(expanded));
         return;
     }
+    const auto slice = m_radio->txSlice();
+    if (!slice) {
+        Q_EMIT statusMessage(tr("Kein TX-Slice – nicht gesendet"));
+        return;
+    }
+    if (!slice->mode.startsWith(QLatin1String("CW"))) {
+        Q_EMIT statusMessage(tr("TX-Slice %1 steht auf %2, nicht CW – nicht gesendet").arg(slice->letter, slice->mode));
+        return;
+    }
     if (key != QLatin1String("F1"))
         m_cqPending = false;
     m_keyer->send(expanded);
