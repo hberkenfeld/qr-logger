@@ -57,9 +57,9 @@ Vor jedem Senden: TX-Slice des aktiven Kanals setzen (`slice set <n> tx=1`).
 - **RTTY-Dekodierung:** eigener Demodulator (Mark/Space-Filter, ggf. 2 Decoder pro Kanal). AetherSDR hat einen Decoder (`RttyDecoder`, GPL-3) als Referenz.
 - **CW-Dekodierung:** austauschbar hinter einer Schnittstelle `ICwDecoder` (Text + geschätztes WpM + Pitch + Konfidenz). Ein Decoder je Kanal.
   - **Anforderung:** Genauigkeit mindestens auf Niveau SDC (UT4LW) bei geringer Latenz (< 1 s) – Rückmeldung aus der Praxis: ggmorse (AetherSDR) ist zu ungenau.
-  - **Kandidaten:** (1) klassischer Decoder nach fldigi-Vorbild (GPL-3, Matched Filter, adaptive Schwelle „Optimal ATC“ nach W7AY, adaptives Timing), (2) neuronaler Decoder (DeepFist/DeepCW) – nur wenn Latenz und Lizenz passen, (3) ggmorse nur als Vergleich.
-  - **Vorgehen:** Testkorpus aus realen DAX-RX-Mitschnitten (WAV) mit bekanntem Text bzw. SDC-Ausgabe als Referenz; Zeichenfehlerrate und Latenz automatisiert messen, erst dann Entscheidung.
-  - SDC selbst ist Closed Source (Windows) und kann nicht eingebunden werden.
+  - **Quelle A – SDC als externer Skimmer:** SDC (UT4LW, Windows/Linux/macOS, Closed Source) setzt selbst auf die SmartSDR-API auf. QR-Logger liest dessen Skimmer-Spots (Telnet, Cluster-Format inkl. WpM) und nutzt sie für Rufzeichen-Vorschläge auf der eigenen Frequenz und das gemessene Tempo des Anrufers. *Schnittstelle noch zu verifizieren.*
+  - **Quelle B – eigener Decoder** für Volltext im Decoder-Fenster. Kandidaten: (1) klassisch nach fldigi-Vorbild (GPL-3, Matched Filter, „Optimal ATC“ nach W7AY, adaptives Timing), (2) Bausteine aus OpenSkimmer (uhsdr_cw/Goertzel, libbmorse/Bayes-Trellis von AG1LE) – Lizenz prüfen, (3) neuronal (DeepFist/DeepCW) nur bei passender Latenz/Lizenz, (4) ggmorse nur als Vergleich.
+  - **Vorgehen:** Testkorpus aus realen DAX-RX-Mitschnitten (WAV) mit SDC-Ausgabe als Referenz; Zeichenfehlerrate, Latenz und WpM-Genauigkeit automatisiert messen, erst dann Entscheidung.
 - Decodierter Text erscheint im Decoder-Fenster des Kanals; erkannte Rufzeichen lassen sich per Klick/Taste ins Eingabefeld übernehmen.
 - **SSB/CW-Hören:** übernimmt der GUI-Client bzw. Kopfhörer am Radio; QR-Logger steuert nur Panorama/Mute je Slice (`audio_pan`, `audio_mute`).
 
