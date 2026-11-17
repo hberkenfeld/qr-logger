@@ -48,7 +48,7 @@ QString expandMacro(const QString &text, const MacroContext &ctx)
     return out.toUpper().simplified();
 }
 
-int morseUnits(const QString &text)
+const char *morsePattern(QChar ch)
 {
     static const QHash<QChar, const char *> table{
         {QLatin1Char('A'), ".-"},    {QLatin1Char('B'), "-..."},  {QLatin1Char('C'), "-.-."},
@@ -66,6 +66,12 @@ int morseUnits(const QString &text)
         {QLatin1Char('/'), "-..-."}, {QLatin1Char('?'), "..--.."}, {QLatin1Char('='), "-...-"},
         {QLatin1Char('.'), ".-.-.-"}, {QLatin1Char(','), "--..--"}, {QLatin1Char('+'), ".-.-."},
     };
+    const auto it = table.constFind(ch.toUpper());
+    return it == table.constEnd() ? nullptr : it.value();
+}
+
+int morseUnits(const QString &text)
+{
     int units = 0;
     bool first = true;
     for (const QChar ch : text.toUpper()) {
@@ -73,13 +79,12 @@ int morseUnits(const QString &text)
             units += 4; // word gap 7 = 3 (char gap already counted) + 4
             continue;
         }
-        const auto it = table.constFind(ch);
-        if (it == table.constEnd())
+        const char *code = morsePattern(ch);
+        if (!code)
             continue;
         if (!first)
             units += 3;
         first = false;
-        const char *code = it.value();
         for (int i = 0; code[i]; ++i) {
             if (i > 0)
                 units += 1;

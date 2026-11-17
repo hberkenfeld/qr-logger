@@ -47,6 +47,7 @@ qt_add_executable(qr-logger
     src/app/ContestSetupDialog.cpp src/app/ContestSetupDialog.h
     src/app/MessagesDialog.cpp  src/app/MessagesDialog.h
     src/ui/ContestPanel.cpp     src/ui/ContestPanel.h
+    src/audio/Sidetone.cpp      src/audio/Sidetone.h
 )
 target_link_libraries(qr-logger PRIVATE
     qrl_core
@@ -66,8 +67,8 @@ if(QRL_BUILD_TESTS)
     qt_add_executable(tst_flexprotocol tests/tst_flexprotocol.cpp)
     target_link_libraries(tst_flexprotocol PRIVATE qrl_core Qt6::Test)
     add_test(NAME tst_flexprotocol COMMAND tst_flexprotocol)
-    qt_add_executable(tst_contest tests/tst_contest.cpp)
-    target_link_libraries(tst_contest PRIVATE qrl_core Qt6::Test)
+    qt_add_executable(tst_contest tests/tst_contest.cpp src/audio/Sidetone.cpp src/audio/Sidetone.h)
+    target_link_libraries(tst_contest PRIVATE qrl_core Qt6::Multimedia Qt6::Test)
     add_test(NAME tst_contest COMMAND tst_contest)
     qt_add_executable(tst_operating tests/tst_operating.cpp
         src/ui/ContestPanel.cpp src/ui/ContestPanel.h)

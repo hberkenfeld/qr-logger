@@ -74,6 +74,7 @@ public:
 
     void setLogInterlock(bool on) { m_logInterlock = on; }
     int cwSpeed() const { return m_cwSpeed; }
+    int cwPitch() const { return m_cwPitch; }
     bool cwBreakIn() const { return m_cwBreakIn; }
 
     FlexConnection &connection() { return m_connection; }
@@ -117,6 +118,7 @@ private:
     KeyValues m_transmitDiag;
     bool m_logInterlock = false;
     int m_cwSpeed = 0;
+    int m_cwPitch = 600;
     bool m_cwBreakIn = false;
 };
 

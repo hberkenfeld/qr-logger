@@ -6,6 +6,8 @@
 2. QR-Logger starten → *Radio → Verbinden …* → Radio wählen. QR-Logger bindet sich an den GUI-Client.
 3. *Datei → Neues Log …* → Contest, Rufzeichen, Kategorie, Club, E-Mail.
 4. Optional *Einstellungen → CW-Nachrichten …* prüfen.
+5. *Einstellungen → CW: Mithörton im PC* (Standard an): QR-Logger erzeugt den Mithörton selbst auf der Soundkarte, Tonhöhe = CW-Pitch des Radios. Lautstärke unter *Mithörton-Lautstärke …*.
+6. Falls das Radio nicht sendet: *Einstellungen → CW: PTT während Nachricht halten* probieren.
 
 Geloggt wird immer auf der Frequenz des **TX-Slice** des gebundenen GUI-Clients.
 Logs liegen unter `~/.local/share/qr-logger/QR-Logger/logs/*.qrl` (SQLite); das letzte Log wird beim Start wieder geöffnet.

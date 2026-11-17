@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+#include "audio/Sidetone.h"
 #include "contest/Bands.h"
 #include "contest/TtcContest.h"
 #include "log/Cabrillo.h"
@@ -106,6 +107,15 @@ private Q_SLOTS:
         QCOMPARE(morseUnits(QStringLiteral("PARIS")), 43);
         QCOMPARE(morseUnits(QStringLiteral("PARIS PARIS")), 93);
         QCOMPARE(morseDurationMs(QStringLiteral("E"), 20), 60);
+    }
+
+    void sidetoneRender()
+    {
+        // "E" at 20 WpM = one dit = 60 ms = 2880 samples
+        const QByteArray pcm = Sidetone::render(QStringLiteral("E"), 20, 600, 0.5);
+        QCOMPARE(pcm.size(), 2880 * 2);
+        const QByteArray paris = Sidetone::render(QStringLiteral("PARIS"), 20, 600, 0.5);
+        QCOMPARE(paris.size(), 43 * 2880 * 2);
     }
 
     void cwxEncoding()

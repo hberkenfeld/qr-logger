@@ -79,6 +79,7 @@ void CwKeyer::stop()
         m_pttKeyed = false;
     }
     setSending(false);
+    Q_EMIT stopped();
 }
 
 void CwKeyer::finishMessage()

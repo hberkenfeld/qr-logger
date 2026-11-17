@@ -44,6 +44,7 @@ Q_SIGNALS:
     void finished();
     void sent(const QString &text);
     void diagnostic(const QString &text);
+    void stopped();
 
 private:
     void onStatus(const flex::Message &status);

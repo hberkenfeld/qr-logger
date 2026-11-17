@@ -27,6 +27,9 @@ QString expandMacro(const QString &text, const MacroContext &ctx);
 QString cutRst(const QString &rst);
 QString cutDigits(const QString &digits);
 
+// Morse pattern of a character ("." / "-"), nullptr if unknown.
+const char *morsePattern(QChar ch);
+
 // Duration of the text in Morse units (dit = 1), PARIS timing.
 int morseUnits(const QString &text);
 inline int morseDurationMs(const QString &text, int wpm) { return wpm > 0 ? morseUnits(text) * 1200 / wpm : 0; }

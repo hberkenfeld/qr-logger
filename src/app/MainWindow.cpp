@@ -5,6 +5,7 @@
 #include "app/ContestSetupDialog.h"
 #include "app/MessagesDialog.h"
 #include "app/RadioPanel.h"
+#include "audio/Sidetone.h"
 #include "log/Cabrillo.h"
 #include "log/LogDatabase.h"
 #include "tx/CwKeyer.h"
@@ -18,6 +19,7 @@
 #include <QDockWidget>
 #include <QFile>
 #include <QFileDialog>
+#include <QInputDialog>
 #include <QLabel>
 #include <QMessageBox>
 #include <QStandardPaths>
@@ -35,6 +37,7 @@ MainWindow::MainWindow(QWidget *parent)
     , m_log(new QPlainTextEdit(this))
     , m_logDb(new LogDatabase(this))
     , m_keyer(new CwKeyer(m_radio, this))
+    , m_sidetone(new Sidetone(this))
     , m_panel(new ContestPanel(m_logDb, m_radio, m_keyer, this))
     , m_score(new QLabel(this))
 {
@@ -93,6 +96,24 @@ MainWindow::MainWindow(QWidget *parent)
         QSettings().setValue(QStringLiteral("cw/holdPtt"), on);
         appendLog(on ? tr("CW: PTT wird während der Nachricht gehalten") : tr("CW: Tastung über Break-In"));
     });
+    auto *sidetone = settingsMenu->addAction(tr("CW: &Mithörton im PC"));
+    sidetone->setCheckable(true);
+    sidetone->setChecked(QSettings().value(QStringLiteral("cw/sidetone"), true).toBool());
+    m_sidetone->setEnabled(sidetone->isChecked());
+    m_sidetone->setVolume(QSettings().value(QStringLiteral("cw/sidetoneVolume"), 0.3).toDouble());
+    connect(sidetone, &QAction::toggled, this, [this](bool on) {
+        m_sidetone->setEnabled(on);
+        QSettings().setValue(QStringLiteral("cw/sidetone"), on);
+    });
+    settingsMenu->addAction(tr("CW: Mithörton-&Lautstärke …"), this, [this] {
+        bool ok = false;
+        const int percent = QInputDialog::getInt(this, tr("Mithörton"), tr("Lautstärke (%):"),
+                                                 int(QSettings().value(QStringLiteral("cw/sidetoneVolume"), 0.3).toDouble() * 100), 0, 100, 5, &ok);
+        if (!ok)
+            return;
+        m_sidetone->setVolume(percent / 100.0);
+        QSettings().setValue(QStringLiteral("cw/sidetoneVolume"), percent / 100.0);
+    });
     auto *interlockLog = settingsMenu->addAction(tr("&Diagnose: TX-Interlock protokollieren"));
     interlockLog->setCheckable(true);
     connect(interlockLog, &QAction::toggled, m_radio, &flex::FlexRadio::setLogInterlock);
@@ -133,6 +154,11 @@ MainWindow::MainWindow(QWidget *parent)
     });
     connect(m_panel, &ContestPanel::scoreChanged, this, &MainWindow::showScore);
     connect(m_keyer, &CwKeyer::diagnostic, this, &MainWindow::appendLog);
+    connect(m_keyer, &CwKeyer::sent, this, [this](const QString &text) {
+        m_sidetone->setPitch(m_radio->cwPitch());
+        m_sidetone->play(text, m_keyer->speed());
+    });
+    connect(m_keyer, &CwKeyer::stopped, m_sidetone, &Sidetone::stop);
     connect(m_keyer, &CwKeyer::sent, this, [this](const QString &text) { appendLog(tr("CW: %1").arg(text)); });
     connect(m_radio, &flex::FlexRadio::transmitChanged, this, [this] {
         static bool warned = false;

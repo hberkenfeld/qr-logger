@@ -11,6 +11,7 @@ namespace qrl {
 
 class ContestPanel;
 class CwKeyer;
+class Sidetone;
 class LogDatabase;
 struct Score;
 
@@ -43,6 +44,7 @@ private:
     QPlainTextEdit *m_log;
     LogDatabase *m_logDb;
     CwKeyer *m_keyer;
+    Sidetone *m_sidetone;
     ContestPanel *m_panel;
     QLabel *m_score;
     QAction *m_connectAction = nullptr;

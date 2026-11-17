@@ -139,13 +139,17 @@ void FlexRadio::handleTransmitStatus(const KeyValues &v)
         m_cwSpeed = v.value(QStringLiteral("speed")).toInt();
         changed = true;
     }
+    if (v.contains(QStringLiteral("pitch"))) {
+        m_cwPitch = v.value(QStringLiteral("pitch")).toInt();
+        changed = true;
+    }
     if (v.contains(QStringLiteral("break_in"))) {
         m_cwBreakIn = v.value(QStringLiteral("break_in")) == QLatin1String("1");
         changed = true;
     }
     // Diagnostics for CW keying problems: log only values that actually changed
     QStringList diag;
-    for (const char *key : {"rfpower", "tunepower", "mox", "synccwx", "break_in", "break_in_delay", "max_power_level", "inhibit"}) {
+    for (const char *key : {"rfpower", "tunepower", "mox", "synccwx", "break_in", "break_in_delay", "max_power_level", "inhibit", "sidetone", "mon_gain_cw", "pitch"}) {
         const QString k = QLatin1String(key);
         if (v.contains(k) && m_transmitDiag.value(k) != v.value(k)) {
             m_transmitDiag.insert(k, v.value(k));
